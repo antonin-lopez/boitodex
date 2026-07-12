@@ -1,135 +1,161 @@
 import 'dart:math' as math;
-import 'package:tflite_flutter/tflite_flutter.dart';
-import 'text_tokenizer.dart';
+import 'dart:typed_data';
+import 'package:dart_sentencepiece_tokenizer/dart_sentencepiece_tokenizer.dart';
+import 'package:flutter/services.dart';
+import 'package:onnxruntime_v2/onnxruntime_v2.dart';
 
 class EmbeddingEngine {
-  Interpreter? _interpreter;
-  final TextTokenizer _tokenizer = TextTokenizer();
+  OrtSession? _session;
+  SentencePieceTokenizer? _tokenizer;
   bool _isInitialized = false;
 
   static const int vectorDimension = 384;
   static const int maxSeqLength = 128;
 
+  static const int bosId = 0; // <s>
+  static const int padId = 1; // <pad>
+  static const int eosId = 2; // </s>
+  static const String spaceSymbol = '\u2581';
+
   bool get isInitialized => _isInitialized;
 
   Future<void> initialize({
-    String modelPath = 'assets/models/paraphrase_multilingual_minilm.tflite',
-    String vocabPath = 'assets/tokenizer/vocab.txt',
+    String modelAssetPath =
+        'assets/models/paraphrase_multilingual_minilm_l12_v2_qint8_arm64.onnx',
+    String tokenizerAssetPath = 'assets/tokenizer/tokenizer.json',
   }) async {
     if (_isInitialized) return;
 
-    final options = InterpreterOptions()..threads = 2;
-    _interpreter = await Interpreter.fromAsset(modelPath, options: options);
-    await _tokenizer.initialize(vocabPath: vocabPath);
+    OrtEnv.instance.init();
+    final modelBytes = await rootBundle.load(modelAssetPath);
+    _session = OrtSession.fromBuffer(
+      modelBytes.buffer.asUint8List(),
+      OrtSessionOptions()..appendDefaultProviders(),
+    );
+
+    final tokenizerJson = await rootBundle.loadString(tokenizerAssetPath);
+    _tokenizer = await TokenizerJsonLoader.fromJsonString(tokenizerJson);
 
     _isInitialized = true;
   }
 
   Future<List<double>> encodeText(String text) async {
-    final interpreter = _interpreter;
-    if (!_isInitialized || interpreter == null) {
-      throw StateError('EmbeddingEngine must be initialized before use.');
+    final session = _session;
+    final tokenizer = _tokenizer;
+    if (!_isInitialized || session == null || tokenizer == null) {
+      throw StateError(
+        'EmbeddingEngine doit être initialisé avant utilisation.',
+      );
     }
 
-    if (text.trim().isEmpty) {
-      return List<double>.filled(vectorDimension, 0.0);
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return List<double>.filled(vectorDimension, 0.0);
+
+    // 1. Tokenisation & Padding
+    final (ids, mask, types) = _tokenizeAndPad(tokenizer, trimmed);
+
+    // 2. Préparation des Tensors ONNX
+    final shape = [1, maxSeqLength];
+    final tensors = [
+      OrtValueTensor.createTensorWithDataList(Int64List.fromList(ids), shape),
+      OrtValueTensor.createTensorWithDataList(Int64List.fromList(mask), shape),
+      OrtValueTensor.createTensorWithDataList(Int64List.fromList(types), shape),
+    ];
+
+    final inputs = {
+      'input_ids': tensors[0],
+      'attention_mask': tensors[1],
+      'token_type_ids': tensors[2],
+    };
+
+    // 3. Inférence & Pooling
+    final runOptions = OrtRunOptions();
+    final outputs = session.run(runOptions, inputs);
+    final pooled = _poolOutput(outputs[0]?.value as List, mask);
+
+    // 4. Nettoyage mémoire C++
+    for (final t in tensors) {
+      t.release();
+    }
+    runOptions.release();
+    outputs.forEach((e) => e?.release());
+
+    // 5. Normalisation L2
+    return _normalize(pooled);
+  }
+
+  /// Prépare la phrase et génère le triplet (input_ids, attention_mask, token_type_ids)
+  (List<int>, List<int>, List<int>) _tokenizeAndPad(
+    SentencePieceTokenizer tokenizer,
+    String text,
+  ) {
+    final formatted = text.startsWith(spaceSymbol)
+        ? text
+        : '$spaceSymbol${text.replaceAll(' ', spaceSymbol)}';
+
+    var ids = tokenizer.encode(formatted).ids.toList();
+
+    if (ids.isEmpty || ids.first != bosId) ids.insert(0, bosId);
+    if (ids.last != eosId) ids.add(eosId);
+
+    if (ids.length >= maxSeqLength) {
+      ids = ids.sublist(0, maxSeqLength)..[maxSeqLength - 1] = eosId;
     }
 
-    final tokenized = _tokenizer.tokenize(text, maxSeqLength: maxSeqLength);
+    final padLen = maxSeqLength - ids.length;
+    final paddedIds = [...ids, ...List<int>.filled(padLen, padId)];
+    final mask = [
+      ...List<int>.filled(ids.length, 1),
+      ...List<int>.filled(padLen, 0),
+    ];
+    final types = List<int>.filled(maxSeqLength, 0);
 
-    // 🎯 Mapping dynamique des entrées selon la métadonnée du modèle TFLite
-    final inputTensors = interpreter.getInputTensors();
-    final List<Object> inputs = [];
-    final tokenTypeIds = List<int>.filled(maxSeqLength, 0);
+    return (paddedIds, mask, types);
+  }
 
-    for (final tensor in inputTensors) {
-      final name = tensor.name.toLowerCase();
-      if (name.contains('mask')) {
-        inputs.add([tokenized.attentionMask]);
-      } else if (name.contains('type') || name.contains('segment')) {
-        inputs.add([tokenTypeIds]);
-      } else {
-        inputs.add([tokenized.inputIds]);
-      }
+  /// Applique le Mean Pooling sur les embeddings
+  List<double> _poolOutput(List rawOutput, List<int> mask) {
+    if (rawOutput.isNotEmpty && rawOutput[0] is double) {
+      return (rawOutput as List).cast<double>();
     }
 
-    // Inspection de la forme du tenseur de sortie
-    final outputShape = interpreter.getOutputTensor(0).shape;
+    final tokenEmbeddings = rawOutput[0] as List;
+    final pooled = Float32List(vectorDimension);
+    var count = 0;
 
-    // CAS A : Le modèle inclut déjà le Mean Pooling (Sortie : [1, 384])
-    if (outputShape.length == 2 && outputShape[1] == vectorDimension) {
-      final output = List.filled(
-        1 * vectorDimension,
-        0.0,
-      ).reshape([1, vectorDimension]);
-
-      interpreter.runForMultipleInputs(inputs, {0: output});
-
-      final rawVector = (output as List)[0].cast<double>();
-      return _normalize(rawVector);
-    }
-
-    // CAS B : Le modèle renvoie les embeddings de tous les tokens (Sortie : [1, 128, 384])
-    final rawOutput = List.filled(
-      1 * maxSeqLength * vectorDimension,
-      0.0,
-    ).reshape([1, maxSeqLength, vectorDimension]);
-
-    interpreter.runForMultipleInputs(inputs, {0: rawOutput});
-
-    // Mean Pooling : moyenne des vecteurs de tokens valides (hors padding)
-    final tokenEmbeddings = (rawOutput as List)[0] as List;
-    final pooled = List<double>.filled(vectorDimension, 0.0);
-
-    var validTokenCount = 0;
     for (var i = 0; i < maxSeqLength; i++) {
-      if (tokenized.attentionMask[i] == 1) {
-        validTokenCount++;
-        final tokenVec = (tokenEmbeddings[i] as List).cast<double>();
+      if (mask[i] == 1) {
+        count++;
+        final vec = (tokenEmbeddings[i] as List).cast<double>();
         for (var d = 0; d < vectorDimension; d++) {
-          pooled[d] += tokenVec[d];
+          pooled[d] += vec[d];
         }
       }
     }
 
-    if (validTokenCount > 0) {
+    if (count > 0) {
       for (var d = 0; d < vectorDimension; d++) {
-        pooled[d] /= validTokenCount;
+        pooled[d] /= count;
       }
     }
-
-    return _normalize(pooled);
+    return pooled.toList();
   }
 
-  double computeSimilarity(List<double> v1, List<double> v2) {
-    if (v1.length != vectorDimension || v2.length != vectorDimension) {
-      throw ArgumentError(
-        'Vectors must have dimension $vectorDimension (v1: ${v1.length}, v2: ${v2.length})',
-      );
-    }
-
-    double dotProduct = 0.0;
-    for (var i = 0; i < vectorDimension; i++) {
-      dotProduct += v1[i] * v2[i];
-    }
-
-    return dotProduct;
-  }
-
+  /// Normalisation L2 du vecteur
   List<double> _normalize(List<double> vector) {
-    double sumOfSquares = 0.0;
-    for (final val in vector) {
-      sumOfSquares += val * val;
-    }
+    final sumOfSquares = vector.fold<double>(
+      0.0,
+      (sum, val) => sum + (val * val),
+    );
     final norm = math.sqrt(sumOfSquares);
-
     if (norm == 0.0) return vector;
     return vector.map((val) => val / norm).toList();
   }
 
-  Future<void> dispose() async {
-    _interpreter?.close();
-    _interpreter = null;
+  void dispose() {
+    _session?.release();
+    _session = null;
+    OrtEnv.instance.release();
     _isInitialized = false;
   }
 }

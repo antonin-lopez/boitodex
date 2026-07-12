@@ -30,6 +30,27 @@ void main() {
       expect(result, closeTo(-1.0, 0.0001));
     });
 
+    test(
+      'should return 1.0 for collinear vectors with different magnitudes',
+      () {
+        final v1 = [3.0, 0.0];
+        final v2 = [5.0, 0.0];
+
+        final result = cosineSimilarity(v1, v2);
+
+        expect(result, closeTo(1.0, 0.0001));
+      },
+    );
+
+    test('should return 0.0 when at least one vector is a zero vector', () {
+      final v1 = [0.0, 0.0, 0.0];
+      final v2 = [1.0, 2.0, 3.0];
+
+      final result = cosineSimilarity(v1, v2);
+
+      expect(result, equals(0.0));
+    });
+
     test('should throw ArgumentError when vector dimensions do not match', () {
       final v1 = [1.0, 0.0];
       final v2 = [1.0, 0.0, 0.0];

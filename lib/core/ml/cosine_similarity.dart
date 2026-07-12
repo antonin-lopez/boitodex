@@ -10,9 +10,12 @@ double cosineSimilarity(List<double> a, List<double> b) {
   double normB = 0.0;
 
   for (var i = 0; i < a.length; i++) {
-    dotProduct += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
+    final valA = a[i];
+    final valB = b[i];
+
+    dotProduct += valA * valB;
+    normA += valA * valA;
+    normB += valB * valB;
   }
 
   if (normA == 0.0 || normB == 0.0) {
