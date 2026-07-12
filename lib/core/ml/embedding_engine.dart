@@ -4,21 +4,29 @@ import 'package:dart_sentencepiece_tokenizer/dart_sentencepiece_tokenizer.dart';
 import 'package:flutter/services.dart';
 import 'package:onnxruntime_v2/onnxruntime_v2.dart';
 
+/// On-device machine learning engine that generates text embeddings using an ONNX model
+/// and a SentencePiece tokenizer.
 class EmbeddingEngine {
   OrtSession? _session;
   SentencePieceTokenizer? _tokenizer;
   bool _isInitialized = false;
 
-  static const int vectorDimension = 384;
-  static const int maxSeqLength = 128;
+  // Model input/output dimensions
+  static const int vectorDimension = 384; // Sentence-MiniLM vector size
+  static const int maxSeqLength = 128; // Maximum token sequence length
 
-  static const int bosId = 0; // <s>
-  static const int padId = 1; // <pad>
-  static const int eosId = 2; // </s>
+  // SentencePiece special token IDs
+  static const int bosId = 0; // Beginning of Sentence <s>
+  static const int padId = 1; // Padding token <pad>
+  static const int eosId = 2; // End of Sentence </s>
+
+  // SentencePiece uses the metaspace symbol ' ' (\u2581) to denote whitespace
   static const String spaceSymbol = '\u2581';
 
+  /// Indicates whether the ONNX session and tokenizer are ready to use.
   bool get isInitialized => _isInitialized;
 
+  /// Loads the ONNX model and tokenizer JSON file from Flutter assets and initializes native ONNX environment.
   Future<void> initialize({
     String modelAssetPath =
         'assets/models/paraphrase_multilingual_minilm_l12_v2_qint8_arm64.onnx',
@@ -26,103 +34,142 @@ class EmbeddingEngine {
   }) async {
     if (_isInitialized) return;
 
+    // Initialize the ONNX Runtime C++ environment
     OrtEnv.instance.init();
+
+    // Load model binary buffer from Flutter assets
     final modelBytes = await rootBundle.load(modelAssetPath);
     _session = OrtSession.fromBuffer(
       modelBytes.buffer.asUint8List(),
       OrtSessionOptions()..appendDefaultProviders(),
     );
 
+    // Load SentencePiece tokenizer configuration
     final tokenizerJson = await rootBundle.loadString(tokenizerAssetPath);
-    _tokenizer = await TokenizerJsonLoader.fromJsonString(tokenizerJson);
+    _tokenizer = TokenizerJsonLoader.fromJsonString(tokenizerJson);
 
     _isInitialized = true;
   }
 
+  /// Encodes input string into a 384-dimensional L2-normalized float vector.
   Future<List<double>> encodeText(String text) async {
     final session = _session;
     final tokenizer = _tokenizer;
     if (!_isInitialized || session == null || tokenizer == null) {
-      throw StateError(
-        'EmbeddingEngine doit être initialisé avant utilisation.',
-      );
+      throw StateError('EmbeddingEngine must be initialized before use.');
     }
 
     final trimmed = text.trim();
+    // Return a zero vector if input text is empty
     if (trimmed.isEmpty) return List<double>.filled(vectorDimension, 0.0);
 
-    // 1. Tokenisation & Padding
+    // 1. Tokenize, format, and pad input text
     final (ids, mask, types) = _tokenizeAndPad(tokenizer, trimmed);
 
-    // 2. Préparation des Tensors ONNX
-    final shape = [1, maxSeqLength];
-    final tensors = [
-      OrtValueTensor.createTensorWithDataList(Int64List.fromList(ids), shape),
-      OrtValueTensor.createTensorWithDataList(Int64List.fromList(mask), shape),
-      OrtValueTensor.createTensorWithDataList(Int64List.fromList(types), shape),
-    ];
+    final List<OrtValueTensor> tensors = [];
+    OrtRunOptions? runOptions;
+    List<OrtValue?>? outputs;
 
-    final inputs = {
-      'input_ids': tensors[0],
-      'attention_mask': tensors[1],
-      'token_type_ids': tensors[2],
-    };
+    try {
+      // 2. Safely instantiate ONNX Tensors inside the try block for guaranteed memory cleanup
+      final shape = [1, maxSeqLength];
+      tensors.addAll([
+        OrtValueTensor.createTensorWithDataList(Int64List.fromList(ids), shape),
+        OrtValueTensor.createTensorWithDataList(
+          Int64List.fromList(mask),
+          shape,
+        ),
+        OrtValueTensor.createTensorWithDataList(
+          Int64List.fromList(types),
+          shape,
+        ),
+      ]);
 
-    // 3. Inférence & Pooling
-    final runOptions = OrtRunOptions();
-    final outputs = session.run(runOptions, inputs);
-    final pooled = _poolOutput(outputs[0]?.value as List, mask);
+      final inputs = {
+        'input_ids': tensors[0],
+        'attention_mask': tensors[1],
+        'token_type_ids': tensors[2],
+      };
 
-    // 4. Nettoyage mémoire C++
-    for (final t in tensors) {
-      t.release();
+      // 3. Run model inference
+      runOptions = OrtRunOptions();
+      outputs = session.run(runOptions, inputs);
+
+      final rawOutput = outputs[0]?.value;
+      if (rawOutput == null || rawOutput is! List) {
+        throw StateError('Invalid output from ONNX model.');
+      }
+
+      // 4. Apply Mean Pooling to condense token embeddings into a single sentence vector
+      final pooled = _poolOutput(rawOutput, mask);
+
+      // 5. Apply L2 normalization
+      return _normalize(pooled);
+    } finally {
+      // 6. Always release C++ native ONNX pointers to prevent memory leaks
+      for (final t in tensors) {
+        t.release();
+      }
+      runOptions?.release();
+      if (outputs != null) {
+        for (final e in outputs) {
+          e?.release();
+        }
+      }
     }
-    runOptions.release();
-    outputs.forEach((e) => e?.release());
-
-    // 5. Normalisation L2
-    return _normalize(pooled);
   }
 
-  /// Prépare la phrase et génère le triplet (input_ids, attention_mask, token_type_ids)
+  /// Formats text for SentencePiece, encodes token IDs, adds BOS/EOS tokens,
+  /// pads sequence to [maxSeqLength], and returns required tensor input lists.
   (List<int>, List<int>, List<int>) _tokenizeAndPad(
     SentencePieceTokenizer tokenizer,
     String text,
   ) {
+    // SentencePiece requires word prefixes to use the metaspace symbol (\u2581)
     final formatted = text.startsWith(spaceSymbol)
         ? text
         : '$spaceSymbol${text.replaceAll(' ', spaceSymbol)}';
 
     var ids = tokenizer.encode(formatted).ids.toList();
 
+    // Ensure Beginning-of-Sentence <s> token is present at index 0
     if (ids.isEmpty || ids.first != bosId) ids.insert(0, bosId);
+    // Ensure End-of-Sentence </s> token is present at the end
     if (ids.last != eosId) ids.add(eosId);
 
+    // Truncate sequence if it exceeds the max sequence length
     if (ids.length >= maxSeqLength) {
       ids = ids.sublist(0, maxSeqLength)..[maxSeqLength - 1] = eosId;
     }
 
+    // Calculate padding length
     final padLen = maxSeqLength - ids.length;
     final paddedIds = [...ids, ...List<int>.filled(padLen, padId)];
+
+    // Attention mask: 1 for actual tokens, 0 for padding tokens
     final mask = [
       ...List<int>.filled(ids.length, 1),
       ...List<int>.filled(padLen, 0),
     ];
+
+    // Token type IDs: filled with 0s (single sentence classification)
     final types = List<int>.filled(maxSeqLength, 0);
 
     return (paddedIds, mask, types);
   }
 
-  /// Applique le Mean Pooling sur les embeddings
+  /// Performs Mean Pooling: averages token embedding vectors while ignoring padding tokens.
   List<double> _poolOutput(List rawOutput, List<int> mask) {
+    // Fallback if model output is already pooled
     if (rawOutput.isNotEmpty && rawOutput[0] is double) {
-      return (rawOutput as List).cast<double>();
+      return rawOutput.cast<double>();
     }
 
     final tokenEmbeddings = rawOutput[0] as List;
     final pooled = Float32List(vectorDimension);
     var count = 0;
 
+    // Sum embeddings for valid non-padded tokens
     for (var i = 0; i < maxSeqLength; i++) {
       if (mask[i] == 1) {
         count++;
@@ -133,6 +180,7 @@ class EmbeddingEngine {
       }
     }
 
+    // Average sums across token count
     if (count > 0) {
       for (var d = 0; d < vectorDimension; d++) {
         pooled[d] /= count;
@@ -141,7 +189,7 @@ class EmbeddingEngine {
     return pooled.toList();
   }
 
-  /// Normalisation L2 du vecteur
+  /// Normalizes the vector to unit length (Euclidean L2 norm = 1.0).
   List<double> _normalize(List<double> vector) {
     final sumOfSquares = vector.fold<double>(
       0.0,
@@ -152,10 +200,14 @@ class EmbeddingEngine {
     return vector.map((val) => val / norm).toList();
   }
 
+  /// Releases all native resources and session references.
   void dispose() {
     _session?.release();
     _session = null;
-    OrtEnv.instance.release();
+    _tokenizer = null;
+    if (_isInitialized) {
+      OrtEnv.instance.release();
+    }
     _isInitialized = false;
   }
 }
