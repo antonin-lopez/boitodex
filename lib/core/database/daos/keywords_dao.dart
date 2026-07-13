@@ -1,3 +1,4 @@
+import 'package:boitodex/core/utils/uuid_generator.dart';
 import 'package:drift/drift.dart';
 
 import '../app_database.dart';
@@ -32,5 +33,48 @@ class KeywordsDao extends DatabaseAccessor<AppDatabase>
 
     final rows = await query.get();
     return rows.map((row) => row.readTable(keywordsTable)).toList();
+  }
+
+  Future<KeywordData?> getKeywordByLabel(String collectionId, String label) {
+    return (select(keywordsTable)..where(
+          (tbl) =>
+              tbl.collectionId.equals(collectionId) & tbl.label.equals(label),
+        ))
+        .getSingleOrNull();
+  }
+
+  Future<void> linkCarWithKeywords({
+    required String carId,
+    required String collectionId,
+    required List<String> keywordLabels,
+  }) async {
+    await (delete(
+      carKeywordsTable,
+    )..where((tbl) => tbl.carId.equals(carId))).go();
+
+    for (final rawLabel in keywordLabels) {
+      final label = rawLabel.trim();
+      if (label.isEmpty) continue;
+
+      var keyword = await getKeywordByLabel(collectionId, label);
+      var keywordId = keyword?.id;
+
+      if (keywordId == null) {
+        keywordId = UuidGenerator.generate();
+        await insertOrUpdateKeyword(
+          KeywordsTableCompanion.insert(
+            id: keywordId,
+            collectionId: collectionId,
+            label: label,
+            createdAt: DateTime.now(),
+          ),
+        );
+      }
+
+      await into(carKeywordsTable).insert(
+        CarKeywordsTableCompanion.insert(carId: carId, keywordId: keywordId),
+        mode: InsertMode.insertOrIgnore,
+      );
+    }
   }
 }

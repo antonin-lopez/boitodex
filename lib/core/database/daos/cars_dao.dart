@@ -70,4 +70,23 @@ class CarsDao extends DatabaseAccessor<AppDatabase> with _$CarsDaoMixin {
       ],
     );
   }
+
+  Future<List<CarImageData>> getImagesForCar(String carId) {
+    return (select(
+      carImagesTable,
+    )..where((tbl) => tbl.carId.equals(carId) & tbl.deletedAt.isNull())).get();
+  }
+
+  Future<void> replaceCarImages({
+    required String carId,
+    required List<CarImagesTableCompanion> images,
+  }) async {
+    await (delete(
+      carImagesTable,
+    )..where((tbl) => tbl.carId.equals(carId))).go();
+
+    for (final image in images) {
+      await into(carImagesTable).insertOnConflictUpdate(image);
+    }
+  }
 }
