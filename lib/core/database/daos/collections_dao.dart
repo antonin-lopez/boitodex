@@ -29,4 +29,8 @@ class CollectionsDao extends DatabaseAccessor<AppDatabase>
   Future<void> deleteCollection(String id) {
     return (delete(collectionsTable)..where((tbl) => tbl.id.equals(id))).go();
   }
+
+  Future<CollectionData?> getActiveCollection() {
+    return select(collectionsTable).getSingleOrNull();
+  }
 }
