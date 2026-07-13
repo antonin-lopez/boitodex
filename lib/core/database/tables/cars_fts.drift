@@ -1,0 +1,11 @@
+CREATE VIRTUAL TABLE cars_fts USING fts5(
+    car_id UNINDEXED,
+    notes,
+    keywords,
+    tokenize = 'unicode61 remove_diacritics 2'
+);
+
+searchCarsByText: SELECT fts.car_id FROM cars_fts fts
+  INNER JOIN cars c ON c.id = fts.car_id
+  WHERE cars_fts MATCH :query AND c.deleted_at IS NULL
+  ORDER BY rank;
