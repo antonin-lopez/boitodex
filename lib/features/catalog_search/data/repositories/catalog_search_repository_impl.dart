@@ -3,20 +3,20 @@ import 'dart:typed_data';
 import 'package:boitodex/core/database/daos/cars_dao.dart';
 import 'package:boitodex/core/ml/cosine_similarity.dart';
 import 'package:boitodex/core/ml/embedding_engine.dart';
-import 'package:boitodex/features/car_entry_detail/domain/repositories/car_repository.dart';
+import 'package:boitodex/features/car_entry_detail/domain/repositories/car_entry_detail_repository.dart';
 import 'package:boitodex/features/catalog_search/domain/models/search_result.dart';
-import 'package:boitodex/features/catalog_search/domain/repositories/search_repository.dart';
+import 'package:boitodex/features/catalog_search/domain/repositories/catalog_search_repository.dart';
 
-class SearchRepositoryImpl implements SearchRepository {
+class CatalogSearchRepositoryImpl implements CatalogSearchRepository {
   final CarsDao _carsDao;
-  final CarRepository _carRepository;
+  final CarEntryDetailRepository _carEntryDetailRepository;
   final EmbeddingEngine _embeddingEngine;
 
   static const double _semanticThreshold = 0.5;
 
-  SearchRepositoryImpl(
+  CatalogSearchRepositoryImpl(
     this._carsDao,
-    this._carRepository,
+    this._carEntryDetailRepository,
     this._embeddingEngine,
   );
 
@@ -32,7 +32,7 @@ class SearchRepositoryImpl implements SearchRepository {
     final resultsMap = <String, SearchResult>{};
 
     for (final carId in ftsCarIds) {
-      final car = await _carRepository.getCarById(carId);
+      final car = await _carEntryDetailRepository.getCarById(carId);
       if (car != null &&
           car.collectionId == collectionId &&
           car.deletedAt == null) {
@@ -47,7 +47,7 @@ class SearchRepositoryImpl implements SearchRepository {
     final queryVector = await _embeddingEngine.encodeText(cleanQuery);
     final queryFloat32 = Float32List.fromList(queryVector);
 
-    final allCars = await _carRepository
+    final allCars = await _carEntryDetailRepository
         .watchCarsByCollection(collectionId)
         .first;
 

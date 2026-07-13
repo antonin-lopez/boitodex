@@ -1092,7 +1092,7 @@ class $CarImagesTableTable extends CarImagesTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES cars (id)',
+      'REFERENCES cars (id) ON DELETE CASCADE',
     ),
   );
   static const VerificationMeta _localPathMeta = const VerificationMeta(
@@ -1968,7 +1968,7 @@ class $CarKeywordsTableTable extends CarKeywordsTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES cars (id)',
+      'REFERENCES cars (id) ON DELETE CASCADE',
     ),
   );
   static const VerificationMeta _keywordIdMeta = const VerificationMeta(
@@ -1982,7 +1982,7 @@ class $CarKeywordsTableTable extends CarKeywordsTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES keywords (id)',
+      'REFERENCES keywords (id) ON DELETE CASCADE',
     ),
   );
   @override
@@ -2479,7 +2479,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final KeywordsDao keywordsDao = KeywordsDao(this as AppDatabase);
   Selectable<String> searchCarsByText(String query) {
     return customSelect(
-      'SELECT car_id FROM cars_fts WHERE cars_fts MATCH ?1 ORDER BY rank',
+      'SELECT fts.car_id FROM cars_fts AS fts INNER JOIN cars AS c ON c.id = fts.car_id WHERE cars_fts MATCH ?1 AND c.deleted_at IS NULL ORDER BY rank',
       variables: [Variable<String>(query)],
       readsFrom: {carsFts},
     ).map((QueryRow row) => row.read<String>('car_id'));
@@ -2498,6 +2498,30 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     carKeywordsTable,
     syncCursorsTable,
   ];
+  @override
+  StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'cars',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('car_images', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'cars',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('car_keywords', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'keywords',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('car_keywords', kind: UpdateKind.delete)],
+    ),
+  ]);
 }
 
 typedef $CarsFtsCreateCompanionBuilder =

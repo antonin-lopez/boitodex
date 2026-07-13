@@ -3,12 +3,12 @@ import 'package:boitodex/core/database/daos/collections_dao.dart';
 import 'package:boitodex/core/utils/pairing_code_generator.dart';
 import 'package:boitodex/core/utils/uuid_generator.dart';
 import 'package:boitodex/features/onboarding_pairing/domain/models/collection.dart';
-import 'package:boitodex/features/onboarding_pairing/domain/repositories/pairing_repository.dart';
+import 'package:boitodex/features/onboarding_pairing/domain/repositories/onboarding_pairing_repository.dart';
 
-class PairingRepositoryImpl implements PairingRepository {
+class OnboardingPairingRepositoryImpl implements OnboardingPairingRepository {
   final CollectionsDao _collectionsDao;
 
-  PairingRepositoryImpl(this._collectionsDao);
+  OnboardingPairingRepositoryImpl(this._collectionsDao);
 
   @override
   Future<Collection> createCollection() async {

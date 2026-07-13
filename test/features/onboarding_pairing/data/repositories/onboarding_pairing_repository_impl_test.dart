@@ -2,12 +2,12 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:boitodex/core/database/app_database.dart';
-import 'package:boitodex/features/onboarding_pairing/data/repositories/pairing_repository_impl.dart';
+import 'package:boitodex/features/onboarding_pairing/data/repositories/onboarding_pairing_repository_impl.dart';
 
 void main() {
   group('PairingRepositoryImpl', () {
     late AppDatabase db;
-    late PairingRepositoryImpl repository;
+    late OnboardingPairingRepositoryImpl repository;
 
     setUp(() async {
       db = AppDatabase(
@@ -17,7 +17,7 @@ void main() {
           },
         ),
       );
-      repository = PairingRepositoryImpl(db.collectionsDao);
+      repository = OnboardingPairingRepositoryImpl(db.collectionsDao);
     });
 
     tearDown(() async {

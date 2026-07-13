@@ -3,8 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:boitodex/core/database/app_database.dart';
 import 'package:boitodex/core/ml/embedding_engine.dart';
-import 'package:boitodex/features/car_entry_detail/data/repositories/car_repository_impl.dart';
-import 'package:boitodex/features/catalog_search/data/repositories/search_repository_impl.dart';
+import 'package:boitodex/features/car_entry_detail/data/repositories/car_entry_detail_repository_impl.dart';
+import 'package:boitodex/features/catalog_search/data/repositories/catalog_search_repository_impl.dart';
 
 class FakeEmbeddingEngine implements EmbeddingEngine {
   @override
@@ -32,8 +32,8 @@ class FakeEmbeddingEngine implements EmbeddingEngine {
 void main() {
   group('SearchRepositoryImpl', () {
     late AppDatabase db;
-    late CarRepositoryImpl carRepository;
-    late SearchRepositoryImpl searchRepository;
+    late CarEntryDetailRepositoryImpl carRepository;
+    late CatalogSearchRepositoryImpl searchRepository;
 
     const testCollectionId = '9a8b7c6d-5432-1098-fe01-234567890abc';
 
@@ -47,9 +47,9 @@ void main() {
       );
 
       final fakeEngine = FakeEmbeddingEngine();
-      carRepository = CarRepositoryImpl(db.carsDao, db.keywordsDao, fakeEngine);
+      carRepository = CarEntryDetailRepositoryImpl(db.carsDao, db.keywordsDao, fakeEngine);
 
-      searchRepository = SearchRepositoryImpl(
+      searchRepository = CatalogSearchRepositoryImpl(
         db.carsDao,
         carRepository,
         fakeEngine,

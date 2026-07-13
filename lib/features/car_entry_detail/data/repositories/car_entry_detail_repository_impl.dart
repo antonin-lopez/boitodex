@@ -10,14 +10,18 @@ import 'package:boitodex/core/utils/uuid_generator.dart';
 import 'package:boitodex/features/car_entry_detail/domain/models/car.dart';
 import 'package:boitodex/features/car_entry_detail/domain/models/car_image.dart';
 import 'package:boitodex/features/car_entry_detail/domain/models/keyword.dart';
-import 'package:boitodex/features/car_entry_detail/domain/repositories/car_repository.dart';
+import 'package:boitodex/features/car_entry_detail/domain/repositories/car_entry_detail_repository.dart';
 
-class CarRepositoryImpl implements CarRepository {
+class CarEntryDetailRepositoryImpl implements CarEntryDetailRepository {
   final CarsDao _carsDao;
   final KeywordsDao _keywordsDao;
   final EmbeddingEngine _embeddingEngine;
 
-  CarRepositoryImpl(this._carsDao, this._keywordsDao, this._embeddingEngine);
+  CarEntryDetailRepositoryImpl(
+    this._carsDao,
+    this._keywordsDao,
+    this._embeddingEngine,
+  );
 
   @override
   Future<void> saveCar({
