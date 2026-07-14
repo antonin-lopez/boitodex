@@ -21,6 +21,16 @@ class CarsDao extends DatabaseAccessor<AppDatabase> with _$CarsDaoMixin {
         .watch();
   }
 
+  Future<List<CarData>> getCarsByCollection(String collectionId) {
+    return (select(carsTable)
+          ..where(
+            (tbl) =>
+                tbl.collectionId.equals(collectionId) & tbl.deletedAt.isNull(),
+          )
+          ..orderBy([(tbl) => OrderingTerm.desc(tbl.createdAt)]))
+        .get();
+  }
+
   Future<CarData?> getCarById(String id) {
     return (select(
       carsTable,
