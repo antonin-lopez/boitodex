@@ -93,7 +93,10 @@ void main() {
           expect(primaryImage.localPath, equals('/storage/img1.jpg'));
 
           // Vérification que la recherche FTS retrouve bien la voiture insérée
-          final ftsResults = await db.carsDao.searchCarIdsByFts('Ambulance');
+          final ftsResults = await db.carsDao.searchCarIdsByFts(
+            'Ambulance',
+            testCollectionId,
+          );
           expect(ftsResults, contains(savedCar.id));
         },
       );

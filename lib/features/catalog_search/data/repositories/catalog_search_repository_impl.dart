@@ -42,7 +42,7 @@ class CatalogSearchRepositoryImpl implements CatalogSearchRepository {
         .map(_normalizeForMatching)
         .toList();
 
-    final ftsTask = _carsDao.searchCarIdsByFts(cleanQuery);
+    final ftsTask = _carsDao.searchCarIdsByFts(cleanQuery, collectionId);
     final domainCarsTask = _carRepository
         .watchCarsByCollection(collectionId)
         .first;
@@ -58,18 +58,9 @@ class CatalogSearchRepositoryImpl implements CatalogSearchRepository {
     final domainCarsList = results[1] as List<Car>;
     final queryFloat32 = results[2] as Float32List;
 
-    final centroid = _computeCentroid(domainCarsList);
-
     final resultsMap = <String, SearchResult>{};
 
     for (final car in domainCarsList) {
-      // On calcule TOUJOURS le score FTS s'il existe ET le score sémantique
-      // s'il existe, plutôt que de court-circuiter dès qu'un match FTS est
-      // trouvé. Un match FTS sur un seul terme parmi plusieurs peut donner
-      // un ratio faible (ex: 1 mot sur 4 = 0.25) alors que le contenu est
-      // en réalité très pertinent sémantiquement. On garde le meilleur des
-      // deux signaux plutôt que de figer arbitrairement sur le premier
-      // trouvé.
       final double? ftsScore = ftsCarIds.contains(car.id)
           ? _matchedTermRatio(car, queryTerms)
           : null;
@@ -77,18 +68,9 @@ class CatalogSearchRepositoryImpl implements CatalogSearchRepository {
       double? semanticScore;
       final carEmbedding = car.embedding;
       if (carEmbedding != null) {
-        semanticScore = centroid == null
-            ? cosineSimilarity(queryFloat32, carEmbedding)
-            : cosineSimilarity(
-                _center(queryFloat32, centroid),
-                _center(carEmbedding, centroid),
-              );
+        semanticScore = cosineSimilarity(queryFloat32, carEmbedding);
       }
 
-      // Le score sémantique ne "gagne" que s'il dépasse strictement le
-      // score FTS ET franchit le seuil de confiance minimal. En cas
-      // d'égalité, on privilégie le match FTS (exact/lexical), plus fiable
-      // à score équivalent qu'une similarité vectorielle approximative.
       final semanticIsBetter =
           semanticScore != null &&
           semanticScore >= CatalogSearchConstants.semanticSearchThreshold &&
@@ -97,7 +79,7 @@ class CatalogSearchRepositoryImpl implements CatalogSearchRepository {
       if (semanticIsBetter) {
         resultsMap[car.id] = SearchResult(
           car: car,
-          score: semanticScore!,
+          score: semanticScore,
           isSemanticMatch: true,
         );
       } else if (ftsScore != null) {
@@ -122,10 +104,13 @@ class CatalogSearchRepositoryImpl implements CatalogSearchRepository {
     final notesWords = (car.notes ?? '')
         .toLowerCase()
         .split(RegExp(r'\s+'))
-        .map(_normalizeForMatching);
+        .map(_normalizeForMatching)
+        .toList();
+
     final keywordWords = car.keywords
         .expand((k) => k.label.toLowerCase().split(RegExp(r'\s+')))
-        .map(_normalizeForMatching);
+        .map(_normalizeForMatching)
+        .toList();
 
     var matchedCount = 0;
     for (final term in queryTerms) {
@@ -151,34 +136,6 @@ class CatalogSearchRepositoryImpl implements CatalogSearchRepository {
       buffer.write(index == -1 ? char : withoutDiacritics[index]);
     }
     return buffer.toString();
-  }
-
-  Float32List? _computeCentroid(List<Car> cars) {
-    final embeddings = cars
-        .map((c) => c.embedding)
-        .whereType<Float32List>()
-        .toList();
-    if (embeddings.length < 2) return null;
-
-    final dim = embeddings.first.length;
-    final centroid = Float32List(dim);
-    for (final embedding in embeddings) {
-      for (var i = 0; i < dim; i++) {
-        centroid[i] += embedding[i];
-      }
-    }
-    for (var i = 0; i < dim; i++) {
-      centroid[i] /= embeddings.length;
-    }
-    return centroid;
-  }
-
-  Float32List _center(Float32List vector, Float32List centroid) {
-    final result = Float32List(vector.length);
-    for (var i = 0; i < vector.length; i++) {
-      result[i] = vector[i] - centroid[i];
-    }
-    return result;
   }
 
   Future<Float32List> _getOrComputeQueryEmbedding(String query) async {

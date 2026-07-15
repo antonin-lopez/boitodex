@@ -57,7 +57,10 @@ class CarsDao extends DatabaseAccessor<AppDatabase> with _$CarsDaoMixin {
     )..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
   }
 
-  Future<List<String>> searchCarIdsByFts(String query) async {
+  Future<List<String>> searchCarIdsByFts(
+    String query,
+    String collectionId,
+  ) async {
     final sanitized = query
         .replaceAll(RegExp(r'[^\w\s]', unicode: true), ' ')
         .trim();
@@ -70,7 +73,7 @@ class CarsDao extends DatabaseAccessor<AppDatabase> with _$CarsDaoMixin {
         .map((term) => '"$term"*')
         .join(' OR ');
 
-    return db.searchCarsByText(formattedQuery).get();
+    return db.searchCarsByText(formattedQuery, collectionId).get();
   }
 
   Future<void> insertOrUpdateCar(CarsTableCompanion car) {
@@ -91,8 +94,9 @@ class CarsDao extends DatabaseAccessor<AppDatabase> with _$CarsDaoMixin {
     required String notes,
     required String keywords,
   }) async {
+    await customStatement('DELETE FROM cars_fts WHERE car_id = ?', [carId]);
     await customInsert(
-      'INSERT OR REPLACE INTO cars_fts (car_id, notes, keywords) VALUES (?, ?, ?)',
+      'INSERT INTO cars_fts (car_id, notes, keywords) VALUES (?, ?, ?)',
       variables: [
         Variable.withString(carId),
         Variable.withString(notes),

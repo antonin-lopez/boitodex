@@ -7,5 +7,5 @@ CREATE VIRTUAL TABLE cars_fts USING fts5(
 
 searchCarsByText: SELECT fts.car_id FROM cars_fts fts
   INNER JOIN cars c ON c.id = fts.car_id
-  WHERE cars_fts MATCH :query AND c.deleted_at IS NULL
+  WHERE cars_fts MATCH :query AND c.deleted_at IS NULL AND c.collection_id = :collectionId
   ORDER BY rank;

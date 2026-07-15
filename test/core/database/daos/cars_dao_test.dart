@@ -114,13 +114,19 @@ void main() {
       });
 
       test('should return carId matching exact term in FTS index', () async {
-        final results = await carsDao.searchCarIdsByFts('Ambulance');
+        final results = await carsDao.searchCarIdsByFts(
+          'Ambulance',
+          testCollectionId,
+        );
 
         expect(results, equals([carId1]));
       });
 
       test('should return carId matching prefix term in FTS index', () async {
-        final results = await carsDao.searchCarIdsByFts('Pomp');
+        final results = await carsDao.searchCarIdsByFts(
+          'Pomp',
+          testCollectionId,
+        );
 
         expect(results, equals([carId2]));
       });
@@ -132,6 +138,7 @@ void main() {
 
           final results = await carsDao.searchCarIdsByFts(
             queryWithSpecialChars,
+            testCollectionId,
           );
 
           expect(results, contains(carId1));
@@ -141,7 +148,10 @@ void main() {
       test(
         'should return empty list when query contains only spaces or special characters',
         () async {
-          final results = await carsDao.searchCarIdsByFts('   * : " ( )  ');
+          final results = await carsDao.searchCarIdsByFts(
+            '   * : " ( )  ',
+            testCollectionId,
+          );
 
           expect(results, isEmpty);
         },

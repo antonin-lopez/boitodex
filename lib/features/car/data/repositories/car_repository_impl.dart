@@ -40,44 +40,46 @@ class CarRepositoryImpl implements CarRepository {
       embedding = Float32List.fromList(rawVector);
     }
 
-    final carCompanion = CarsTableCompanion(
-      id: Value(carId),
-      collectionId: Value(collectionId),
-      notes: Value(notes),
-      embedding: Value(embedding),
-      createdAt: Value(now),
-      updatedAt: Value(now),
-      syncStatus: const Value(SyncStatus.pending),
-    );
-    await _carsDao.insertOrUpdateCar(carCompanion);
-
-    await _keywordsDao.linkCarWithKeywords(
-      carId: carId,
-      collectionId: collectionId,
-      keywordLabels: keywordLabels,
-    );
-
-    final imageCompanions = <CarImagesTableCompanion>[];
-    for (var i = 0; i < imagePaths.length; i++) {
-      imageCompanions.add(
-        CarImagesTableCompanion.insert(
-          id: UuidGenerator.generate(),
-          carId: carId,
-          localPath: Value(imagePaths[i]),
-          isPrimary: Value(i == 0),
-          createdAt: now,
-          updatedAt: now,
-          syncStatus: const Value(SyncStatus.pending),
-        ),
+    await _carsDao.db.transaction(() async {
+      final carCompanion = CarsTableCompanion(
+        id: Value(carId),
+        collectionId: Value(collectionId),
+        notes: Value(notes),
+        embedding: Value(embedding),
+        createdAt: Value(now),
+        updatedAt: Value(now),
+        syncStatus: const Value(SyncStatus.pending),
       );
-    }
-    await _carsDao.replaceCarImages(carId: carId, images: imageCompanions);
+      await _carsDao.insertOrUpdateCar(carCompanion);
 
-    await _carsDao.upsertFtsEntry(
-      carId: carId,
-      notes: notes ?? '',
-      keywords: combinedKeywords,
-    );
+      await _keywordsDao.linkCarWithKeywords(
+        carId: carId,
+        collectionId: collectionId,
+        keywordLabels: keywordLabels,
+      );
+
+      final imageCompanions = <CarImagesTableCompanion>[];
+      for (var i = 0; i < imagePaths.length; i++) {
+        imageCompanions.add(
+          CarImagesTableCompanion.insert(
+            id: UuidGenerator.generate(),
+            carId: carId,
+            localPath: Value(imagePaths[i]),
+            isPrimary: Value(i == 0),
+            createdAt: now,
+            updatedAt: now,
+            syncStatus: const Value(SyncStatus.pending),
+          ),
+        );
+      }
+      await _carsDao.replaceCarImages(carId: carId, images: imageCompanions);
+
+      await _carsDao.upsertFtsEntry(
+        carId: carId,
+        notes: notes ?? '',
+        keywords: combinedKeywords,
+      );
+    });
   }
 
   @override
