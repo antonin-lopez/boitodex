@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:boitodex/core/constants/app_constants.dart';
 import 'package:boitodex/core/providers/theme_provider.dart';
 import 'package:boitodex/core/theme/app_theme.dart';
+import 'package:boitodex/features/catalog_search/presentation/screens/catalog_screen.dart';
+import 'package:boitodex/features/onboarding_pairing/data/providers/onboarding_pairing_providers.dart';
+import 'package:boitodex/features/onboarding_pairing/presentation/screens/onboarding_screen.dart';
 
 class App extends ConsumerWidget {
   const App({super.key});
@@ -23,21 +26,20 @@ class App extends ConsumerWidget {
   }
 }
 
-/// Placeholder screen used only to validate that the app boots.
-/// Replaced once onboarding_pairing / catalog_search screens exist,
-/// which will decide whether to show onboarding or the catalog.
-class _Bootstrap extends StatelessWidget {
+class _Bootstrap extends ConsumerWidget {
   const _Bootstrap();
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Text(
-          AppConstants.appName,
-          style: Theme.of(context).textTheme.headlineMedium,
-        ),
-      ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final activeCollection = ref.watch(activeCollectionProvider);
+
+    return activeCollection.when(
+      data: (collection) => collection == null
+          ? const OnboardingScreen()
+          : CatalogScreen(collectionId: collection.id),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (error, _) => Scaffold(body: Center(child: Text('$error'))),
     );
   }
 }

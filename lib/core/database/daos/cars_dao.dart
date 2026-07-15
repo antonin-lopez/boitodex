@@ -13,13 +13,32 @@ class CarsDao extends DatabaseAccessor<AppDatabase> with _$CarsDaoMixin {
   CarsDao(super.db);
 
   Stream<List<CarData>> watchCars(String collectionId) {
-    return (select(carsTable)
+    final query =
+        select(carsTable).join([
+            leftOuterJoin(
+              carKeywordsTable,
+              carKeywordsTable.carId.equalsExp(carsTable.id),
+            ),
+            leftOuterJoin(
+              carImagesTable,
+              carImagesTable.carId.equalsExp(carsTable.id),
+            ),
+          ])
           ..where(
-            (tbl) =>
-                tbl.collectionId.equals(collectionId) & tbl.deletedAt.isNull(),
+            carsTable.collectionId.equals(collectionId) &
+                carsTable.deletedAt.isNull(),
           )
-          ..orderBy([(tbl) => OrderingTerm.desc(tbl.createdAt)]))
-        .watch();
+          ..orderBy([OrderingTerm.desc(carsTable.createdAt)]);
+
+    return query.watch().map((rows) {
+      final seenIds = <String>{};
+      final cars = <CarData>[];
+      for (final row in rows) {
+        final car = row.readTable(carsTable);
+        if (seenIds.add(car.id)) cars.add(car);
+      }
+      return cars;
+    });
   }
 
   Future<List<CarData>> getCarsByCollection(String collectionId) {

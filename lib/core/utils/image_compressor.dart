@@ -13,10 +13,13 @@ abstract class ImageCompressor {
     int quality = 80,
   }) async {
     try {
-      final tempDir = await getTemporaryDirectory();
+      final documentsDir = await getApplicationDocumentsDirectory();
+      final imagesDir = Directory(p.join(documentsDir.path, 'car_images'));
+      await imagesDir.create(recursive: true);
+
       final targetPath = p.join(
-        tempDir.path,
-        '${DateTime.now().millisecondsSinceEpoch}_compressed.jpg',
+        imagesDir.path,
+        '${DateTime.now().microsecondsSinceEpoch}.jpg',
       );
 
       final XFile? compressedXFile =
