@@ -42,8 +42,12 @@ class _CarEntryScreenState extends ConsumerState<CarEntryScreen> {
     if (alreadyExists) return;
 
     setState(() => _keywords.add(label));
-    // Garde le focus pour enchaîner facilement plusieurs mots-clés.
-    _keywordFocusNode.requestFocus();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_keywordFocusNode.canRequestFocus) {
+        _keywordFocusNode.requestFocus();
+      }
+    });
   }
 
   void _removeKeyword(String label) {

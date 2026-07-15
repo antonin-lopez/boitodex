@@ -116,6 +116,40 @@ void main() {
           expect(results.first.score, greaterThanOrEqualTo(0.5));
         },
       );
+
+      test(
+        'should score FTS match as 1.0 even when notes contain diacritics absent from the query',
+        () async {
+          await carRepository.saveCar(
+            collectionId: testCollectionId,
+            notes: 'Break café vintage',
+            keywordLabels: ['Break'],
+            imagePaths: [],
+          );
+
+          final results = await searchRepository.searchCars(
+            query:
+                'cafe', // sans accent, comme un utilisateur pressé le taperait
+            collectionId: testCollectionId,
+          );
+
+          expect(results.length, equals(1));
+          expect(results.first.isSemanticMatch, isFalse);
+          expect(results.first.score, equals(1.0)); // avant le fix : 0.0
+        },
+      );
+
+      test(
+        'should return empty list when query contains only symbols',
+        () async {
+          final results = await searchRepository.searchCars(
+            query: '???',
+            collectionId: testCollectionId,
+          );
+
+          expect(results, isEmpty);
+        },
+      );
     });
   });
 }
