@@ -68,7 +68,7 @@ class CarsDao extends DatabaseAccessor<AppDatabase> with _$CarsDaoMixin {
         .split(RegExp(r'\s+'))
         .where((term) => term.isNotEmpty)
         .map((term) => '"$term"*')
-        .join(' ');
+        .join(' OR ');
 
     return db.searchCarsByText(formattedQuery).get();
   }

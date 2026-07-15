@@ -5,7 +5,7 @@ import 'package:boitodex/core/ml/cosine_similarity.dart';
 import 'package:boitodex/core/ml/embedding_engine.dart';
 import 'package:boitodex/features/car/domain/models/car.dart';
 import 'package:boitodex/features/car/domain/repositories/car_repository.dart';
-import 'package:boitodex/features/catalog_search/domain/constants/catalog_search_constants.dart'; // <-- AJOUTÉ
+import 'package:boitodex/features/catalog_search/domain/constants/catalog_search_constants.dart';
 import 'package:boitodex/features/catalog_search/domain/models/search_result.dart';
 import 'package:boitodex/features/catalog_search/domain/repositories/catalog_search_repository.dart';
 
@@ -30,6 +30,11 @@ class CatalogSearchRepositoryImpl implements CatalogSearchRepository {
     final cleanQuery = query.trim().toLowerCase();
     if (cleanQuery.isEmpty) return [];
 
+    final queryTerms = cleanQuery
+        .split(RegExp(r'\s+'))
+        .where((term) => term.isNotEmpty)
+        .toList();
+
     final ftsTask = _carsDao.searchCarIdsByFts(cleanQuery);
     final domainCarsTask = _carRepository
         .watchCarsByCollection(collectionId)
@@ -52,7 +57,7 @@ class CatalogSearchRepositoryImpl implements CatalogSearchRepository {
       if (ftsCarIds.contains(car.id)) {
         resultsMap[car.id] = SearchResult(
           car: car,
-          score: 1.0,
+          score: _matchedTermRatio(car, queryTerms),
           isSemanticMatch: false,
         );
         continue;
@@ -61,7 +66,6 @@ class CatalogSearchRepositoryImpl implements CatalogSearchRepository {
       final carEmbedding = car.embedding;
       if (carEmbedding != null) {
         final score = cosineSimilarity(queryFloat32, carEmbedding);
-        // Utilisation de la constante de domaine
         if (score >= CatalogSearchConstants.semanticSearchThreshold) {
           resultsMap[car.id] = SearchResult(
             car: car,
@@ -76,6 +80,25 @@ class CatalogSearchRepositoryImpl implements CatalogSearchRepository {
       ..sort((a, b) => b.score.compareTo(a.score));
 
     return sortedResults;
+  }
+
+  double _matchedTermRatio(Car car, List<String> queryTerms) {
+    if (queryTerms.isEmpty) return 0.0;
+
+    final notesWords = (car.notes ?? '').toLowerCase().split(RegExp(r'\s+'));
+    final keywordWords = car.keywords
+        .expand((k) => k.label.toLowerCase().split(RegExp(r'\s+')))
+        .toList();
+
+    var matchedCount = 0;
+    for (final term in queryTerms) {
+      final matches =
+          notesWords.any((w) => w.startsWith(term)) ||
+          keywordWords.any((w) => w.startsWith(term));
+      if (matches) matchedCount++;
+    }
+
+    return matchedCount / queryTerms.length;
   }
 
   Future<Float32List> _getOrComputeQueryEmbedding(String query) async {

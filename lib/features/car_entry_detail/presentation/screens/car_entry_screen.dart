@@ -18,14 +18,36 @@ class CarEntryScreen extends ConsumerStatefulWidget {
 
 class _CarEntryScreenState extends ConsumerState<CarEntryScreen> {
   final _notesController = TextEditingController();
-  final _keywordsController = TextEditingController();
+  final _keywordInputController = TextEditingController();
+  final _keywordFocusNode = FocusNode();
+  final _keywords = <String>[];
   final _pickedImages = <File>[];
 
   @override
   void dispose() {
     _notesController.dispose();
-    _keywordsController.dispose();
+    _keywordInputController.dispose();
+    _keywordFocusNode.dispose();
     super.dispose();
+  }
+
+  void _addKeyword(String raw) {
+    final label = raw.trim();
+    _keywordInputController.clear();
+    if (label.isEmpty) return;
+
+    final alreadyExists = _keywords.any(
+      (existing) => existing.toLowerCase() == label.toLowerCase(),
+    );
+    if (alreadyExists) return;
+
+    setState(() => _keywords.add(label));
+    // Garde le focus pour enchaîner facilement plusieurs mots-clés.
+    _keywordFocusNode.requestFocus();
+  }
+
+  void _removeKeyword(String label) {
+    setState(() => _keywords.remove(label));
   }
 
   Future<void> _pickImages() async {
@@ -40,11 +62,8 @@ class _CarEntryScreenState extends ConsumerState<CarEntryScreen> {
   }
 
   Future<void> _save() async {
-    final keywordLabels = _keywordsController.text
-        .split(',')
-        .map((label) => label.trim())
-        .where((label) => label.isNotEmpty)
-        .toList();
+    // Si l'utilisateur a tapé un mot sans valider, on le récupère quand même.
+    _addKeyword(_keywordInputController.text);
 
     await ref
         .read(carEntryDetailControllerProvider.notifier)
@@ -53,7 +72,7 @@ class _CarEntryScreenState extends ConsumerState<CarEntryScreen> {
           notes: _notesController.text.trim().isEmpty
               ? null
               : _notesController.text.trim(),
-          keywordLabels: keywordLabels,
+          keywordLabels: _keywords,
           imagePaths: _pickedImages.map((file) => file.path).toList(),
         );
     if (!mounted) return;
@@ -104,16 +123,39 @@ class _CarEntryScreenState extends ConsumerState<CarEntryScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          TextField(
-            controller: _keywordsController,
-            decoration: const InputDecoration(
-              labelText: 'Mots-clés (séparés par des virgules)',
+          Text('Mots-clés', style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          if (_keywords.isNotEmpty) ...[
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final keyword in _keywords)
+                  InputChip(
+                    label: Text(keyword),
+                    onDeleted: () => _removeKeyword(keyword),
+                  ),
+              ],
             ),
+            const SizedBox(height: 8),
+          ],
+          TextField(
+            controller: _keywordInputController,
+            focusNode: _keywordFocusNode,
+            textInputAction: TextInputAction.done,
+            decoration: InputDecoration(
+              hintText: 'Ajouter un mot-clé',
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.add),
+                onPressed: () => _addKeyword(_keywordInputController.text),
+              ),
+            ),
+            onSubmitted: _addKeyword,
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _notesController,
-            maxLines: 4,
+            maxLines: 5,
             decoration: const InputDecoration(labelText: 'Notes'),
           ),
           const SizedBox(height: 24),
