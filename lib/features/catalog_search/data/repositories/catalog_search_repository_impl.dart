@@ -1,26 +1,24 @@
 import 'dart:typed_data';
 
-import 'package:boitodex/core/constants/app_constants.dart';
-import 'package:boitodex/core/database/app_database.dart';
 import 'package:boitodex/core/database/daos/cars_dao.dart';
 import 'package:boitodex/core/ml/cosine_similarity.dart';
 import 'package:boitodex/core/ml/embedding_engine.dart';
-import 'package:boitodex/features/car_entry_detail/domain/models/car.dart';
-import 'package:boitodex/features/car_entry_detail/domain/repositories/car_entry_detail_repository.dart';
+import 'package:boitodex/features/car/domain/models/car.dart';
+import 'package:boitodex/features/car/domain/repositories/car_repository.dart';
+import 'package:boitodex/features/catalog_search/domain/constants/catalog_search_constants.dart'; // <-- AJOUTÉ
 import 'package:boitodex/features/catalog_search/domain/models/search_result.dart';
 import 'package:boitodex/features/catalog_search/domain/repositories/catalog_search_repository.dart';
 
 class CatalogSearchRepositoryImpl implements CatalogSearchRepository {
   final CarsDao _carsDao;
-  final CarEntryDetailRepository _carEntryDetailRepository;
+  final CarRepository _carRepository;
   final EmbeddingEngine _embeddingEngine;
 
   final Map<String, Float32List> _queryEmbeddingCache = {};
-  static const int _maxCacheSize = 50;
 
   CatalogSearchRepositoryImpl(
     this._carsDao,
-    this._carEntryDetailRepository,
+    this._carRepository,
     this._embeddingEngine,
   );
 
@@ -33,34 +31,24 @@ class CatalogSearchRepositoryImpl implements CatalogSearchRepository {
     if (cleanQuery.isEmpty) return [];
 
     final ftsTask = _carsDao.searchCarIdsByFts(cleanQuery);
-    final rawCarsTask = _carsDao.getCarsByCollection(collectionId);
-    final domainCarsTask = _carEntryDetailRepository
+    final domainCarsTask = _carRepository
         .watchCarsByCollection(collectionId)
         .first;
     final queryVectorTask = _getOrComputeQueryEmbedding(cleanQuery);
 
     final results = await Future.wait([
       ftsTask,
-      rawCarsTask,
       domainCarsTask,
       queryVectorTask,
     ]);
 
     final ftsCarIds = (results[0] as List<String>).toSet();
-    final rawCarsList = results[1] as List<CarData>;
-    final domainCarsList = results[2] as List<Car>;
-    final queryFloat32 = results[3] as Float32List;
-
-    final embeddingsMap = <String, Float32List>{
-      for (final raw in rawCarsList)
-        if (raw.embedding != null) raw.id: raw.embedding!,
-    };
+    final domainCarsList = results[1] as List<Car>;
+    final queryFloat32 = results[2] as Float32List;
 
     final resultsMap = <String, SearchResult>{};
 
     for (final car in domainCarsList) {
-      if (car.collectionId != collectionId || car.deletedAt != null) continue;
-
       if (ftsCarIds.contains(car.id)) {
         resultsMap[car.id] = SearchResult(
           car: car,
@@ -70,10 +58,11 @@ class CatalogSearchRepositoryImpl implements CatalogSearchRepository {
         continue;
       }
 
-      final carEmbedding = embeddingsMap[car.id];
+      final carEmbedding = car.embedding;
       if (carEmbedding != null) {
         final score = cosineSimilarity(queryFloat32, carEmbedding);
-        if (score >= AppConstants.semanticSearchThreshold) {
+        // Utilisation de la constante de domaine
+        if (score >= CatalogSearchConstants.semanticSearchThreshold) {
           resultsMap[car.id] = SearchResult(
             car: car,
             score: score,
@@ -96,7 +85,7 @@ class CatalogSearchRepositoryImpl implements CatalogSearchRepository {
     final queryVector = await _embeddingEngine.encodeText(query);
     final float32Vector = Float32List.fromList(queryVector);
 
-    if (_queryEmbeddingCache.length >= _maxCacheSize) {
+    if (_queryEmbeddingCache.length >= CatalogSearchConstants.maxCacheSize) {
       _queryEmbeddingCache.remove(_queryEmbeddingCache.keys.first);
     }
     _queryEmbeddingCache[query] = float32Vector;

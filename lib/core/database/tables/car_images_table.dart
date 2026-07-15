@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'cars_table.dart';
+import 'package:boitodex/features/sync/domain/models/sync_status.dart';
 
 @DataClassName('CarImageData')
 class CarImagesTable extends Table {
@@ -21,7 +22,11 @@ class CarImagesTable extends Table {
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get deletedAt => dateTime().nullable()();
 
-  IntColumn get syncStatus => integer().withDefault(const Constant(1))();
+  IntColumn get syncStatus => integer()
+      .map(const SyncStatusConverter())
+      .withDefault(
+        Constant(const SyncStatusConverter().toSql(SyncStatus.pending)),
+      )();
 
   @override
   Set<Column> get primaryKey => {id};

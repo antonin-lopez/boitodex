@@ -1,4 +1,4 @@
-import 'package:boitodex/features/car_entry_detail/domain/models/car.dart';
+import 'package:boitodex/features/car/domain/models/car.dart';
 
 class SearchResult {
   final Car car;

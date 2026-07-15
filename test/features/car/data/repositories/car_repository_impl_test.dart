@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:boitodex/core/database/app_database.dart';
 import 'package:boitodex/core/ml/embedding_engine.dart';
-import 'package:boitodex/features/car_entry_detail/data/repositories/car_entry_detail_repository_impl.dart';
+import 'package:boitodex/features/car/data/repositories/car_repository_impl.dart';
 
 class FakeEmbeddingEngine implements EmbeddingEngine {
   @override
@@ -28,7 +28,7 @@ class FakeEmbeddingEngine implements EmbeddingEngine {
 void main() {
   group('CarRepositoryImpl', () {
     late AppDatabase db;
-    late CarEntryDetailRepositoryImpl repository;
+    late CarRepositoryImpl repository;
 
     const testCollectionId = '8f3a21b4-1234-4567-89ab-cdef01234567';
 
@@ -41,7 +41,7 @@ void main() {
         ),
       );
 
-      repository = CarEntryDetailRepositoryImpl(
+      repository = CarRepositoryImpl(
         db.carsDao,
         db.keywordsDao,
         FakeEmbeddingEngine(),

@@ -17,6 +17,8 @@ import 'tables/collections_table.dart';
 import 'tables/keywords_table.dart';
 import 'tables/sync_cursors_table.dart';
 
+import 'package:boitodex/features/sync/domain/models/sync_status.dart';
+
 part 'app_database.g.dart';
 
 @DriftDatabase(

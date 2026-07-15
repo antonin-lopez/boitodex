@@ -9,7 +9,7 @@ class CarKeywordsTable extends Table {
 
   TextColumn get carId =>
       text().references(CarsTable, #id, onDelete: KeyAction.cascade)();
-      
+
   TextColumn get keywordId =>
       text().references(KeywordsTable, #id, onDelete: KeyAction.cascade)();
 

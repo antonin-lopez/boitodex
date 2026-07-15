@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:boitodex/core/database/app_database.dart';
 import 'package:boitodex/core/database/daos/cars_dao.dart';
+import 'package:boitodex/features/sync/domain/models/sync_status.dart';
 
 void main() {
   group('CarsDao', () {
@@ -53,7 +54,7 @@ void main() {
         expect(retrieved, isNotNull);
         expect(retrieved!.id, equals(carId));
         expect(retrieved.collectionId, equals(testCollectionId));
-        expect(retrieved.syncStatus, equals(1));
+        expect(retrieved.syncStatus, equals(SyncStatus.pending));
       });
 
       test(
@@ -148,27 +149,30 @@ void main() {
     });
 
     group('softDeleteCar', () {
-      test('should set deletedAt timestamp and set syncStatus to 1', () async {
-        const carId = '53bb9616-b967-4763-9d9e-ed040bf59701';
+      test(
+        'should set deletedAt timestamp and set syncStatus to pending',
+        () async {
+          const carId = '53bb9616-b967-4763-9d9e-ed040bf59701';
 
-        await carsDao.insertOrUpdateCar(
-          CarsTableCompanion.insert(
-            id: carId,
-            collectionId: testCollectionId,
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-            syncStatus: const Value(0),
-          ),
-        );
+          await carsDao.insertOrUpdateCar(
+            CarsTableCompanion.insert(
+              id: carId,
+              collectionId: testCollectionId,
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+              syncStatus: const Value(SyncStatus.pending),
+            ),
+          );
 
-        await carsDao.softDeleteCar(carId);
+          await carsDao.softDeleteCar(carId);
 
-        final carAfterDelete = await carsDao.getCarById(carId);
+          final carAfterDelete = await carsDao.getCarById(carId);
 
-        expect(carAfterDelete, isNotNull);
-        expect(carAfterDelete!.deletedAt, isNotNull);
-        expect(carAfterDelete.syncStatus, equals(1));
-      });
+          expect(carAfterDelete, isNotNull);
+          expect(carAfterDelete!.deletedAt, isNotNull);
+          expect(carAfterDelete.syncStatus, equals(SyncStatus.pending));
+        },
+      );
     });
   });
 }

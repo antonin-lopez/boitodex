@@ -1,6 +1,6 @@
-import 'package:boitodex/features/car_entry_detail/domain/models/car.dart';
+import 'package:boitodex/features/car/domain/models/car.dart';
 
-abstract class CarEntryDetailRepository {
+abstract class CarRepository {
   Future<void> saveCar({
     String? id,
     required String collectionId,

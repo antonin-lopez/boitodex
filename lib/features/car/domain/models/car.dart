@@ -1,5 +1,7 @@
-import 'package:boitodex/features/car_entry_detail/domain/models/car_image.dart';
-import 'package:boitodex/features/car_entry_detail/domain/models/keyword.dart';
+import 'dart:typed_data';
+
+import 'package:boitodex/features/car/domain/models/car_image.dart';
+import 'package:boitodex/features/car/domain/models/keyword.dart';
 
 class Car {
   final String id;
@@ -7,6 +9,7 @@ class Car {
   final String? notes;
   final List<Keyword> keywords;
   final List<CarImage> images;
+  final Float32List? embedding;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -17,6 +20,7 @@ class Car {
     this.notes,
     required this.keywords,
     required this.images,
+    this.embedding,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,

@@ -1,4 +1,6 @@
 import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -29,7 +31,8 @@ abstract class ImageCompressor {
 
       if (compressedXFile == null) return null;
       return File(compressedXFile.path);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('ImageCompressor failed: $e\n$st');
       return file;
     }
   }

@@ -35,6 +35,32 @@ class KeywordsDao extends DatabaseAccessor<AppDatabase>
     return rows.map((row) => row.readTable(keywordsTable)).toList();
   }
 
+  Future<Map<String, List<KeywordData>>> getKeywordsForCars(
+    List<String> carIds,
+  ) async {
+    if (carIds.isEmpty) return {};
+
+    final query = select(carKeywordsTable).join([
+      innerJoin(
+        keywordsTable,
+        keywordsTable.id.equalsExp(carKeywordsTable.keywordId),
+      ),
+    ])..where(carKeywordsTable.carId.isIn(carIds));
+
+    final rows = await query.get();
+
+    final map = <String, List<KeywordData>>{};
+    for (final row in rows) {
+      final carId = row.read(carKeywordsTable.carId);
+      final keyword = row.readTable(keywordsTable);
+
+      if (carId != null) {
+        map.putIfAbsent(carId, () => []).add(keyword);
+      }
+    }
+    return map;
+  }
+
   Future<KeywordData?> getKeywordByLabel(String collectionId, String label) {
     return (select(keywordsTable)..where(
           (tbl) =>

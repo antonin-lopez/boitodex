@@ -4,6 +4,7 @@ import '../app_database.dart';
 import '../tables/car_images_table.dart';
 import '../tables/car_keywords_table.dart';
 import '../tables/cars_table.dart';
+import 'package:boitodex/features/sync/domain/models/sync_status.dart';
 
 part 'cars_dao.g.dart';
 
@@ -61,7 +62,7 @@ class CarsDao extends DatabaseAccessor<AppDatabase> with _$CarsDaoMixin {
     return (update(carsTable)..where((tbl) => tbl.id.equals(carId))).write(
       CarsTableCompanion(
         deletedAt: Value(DateTime.now()),
-        syncStatus: const Value(1), // 1 = Pending sync
+        syncStatus: const Value(SyncStatus.pending),
       ),
     );
   }
@@ -85,6 +86,22 @@ class CarsDao extends DatabaseAccessor<AppDatabase> with _$CarsDaoMixin {
     return (select(
       carImagesTable,
     )..where((tbl) => tbl.carId.equals(carId) & tbl.deletedAt.isNull())).get();
+  }
+
+  Future<Map<String, List<CarImageData>>> getImagesForCars(
+    List<String> carIds,
+  ) async {
+    if (carIds.isEmpty) return {};
+
+    final rows = await (select(
+      carImagesTable,
+    )..where((tbl) => tbl.carId.isIn(carIds) & tbl.deletedAt.isNull())).get();
+
+    final map = <String, List<CarImageData>>{};
+    for (final row in rows) {
+      map.putIfAbsent(row.carId, () => []).add(row);
+    }
+    return map;
   }
 
   Future<void> replaceCarImages({
