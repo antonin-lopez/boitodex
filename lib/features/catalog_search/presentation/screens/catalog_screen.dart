@@ -58,7 +58,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.md,
-              AppSpacing.sm,
+              AppSpacing.md,
               AppSpacing.md,
               AppSpacing.md,
             ),
@@ -112,14 +112,13 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () => Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => CarEntryScreen(collectionId: widget.collectionId),
           ),
         ),
-        icon: const Icon(Icons.add),
-        label: const Text('Ajouter'),
+        child: const Icon(Icons.add),
       ),
     );
   }
