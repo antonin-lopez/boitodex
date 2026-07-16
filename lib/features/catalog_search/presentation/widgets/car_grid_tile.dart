@@ -9,6 +9,7 @@ import 'package:boitodex/core/theme/app_radius.dart';
 import 'package:boitodex/core/theme/app_sizes.dart';
 import 'package:boitodex/features/car/domain/models/car.dart';
 import 'package:boitodex/features/car/domain/models/car_image.dart';
+import 'package:boitodex/features/car_entry_detail/presentation/screens/car_detail_screen.dart';
 
 class CarGridTile extends StatelessWidget {
   const CarGridTile({required this.car, this.score, super.key});
@@ -24,27 +25,39 @@ class CarGridTile extends StatelessWidget {
     );
   }
 
+  void _openDetail(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            CarDetailScreen(car: car, collectionId: car.collectionId),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
       clipBehavior: Clip.antiAlias,
       margin: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: _buildImage(context)),
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            child: Text(
-              car.keywords.isEmpty
-                  ? 'Sans mot-clé'
-                  : car.keywords.map((k) => k.label).join(', '),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodyMedium,
+      child: InkWell(
+        onTap: () => _openDetail(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: _buildImage(context)),
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              child: Text(
+                car.keywords.isEmpty
+                    ? 'Sans mot-clé'
+                    : car.keywords.map((k) => k.label).join(', '),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -11,25 +11,40 @@ import 'package:boitodex/core/theme/app_spacing.dart';
 import 'package:boitodex/core/utils/image_compressor.dart';
 import 'package:boitodex/core/widgets/async_result_handler.dart';
 import 'package:boitodex/core/widgets/primary_loading_button.dart';
+import 'package:boitodex/features/car/domain/models/car.dart';
 import 'package:boitodex/features/car_entry_detail/presentation/controllers/car_entry_detail_controller.dart';
 import 'package:boitodex/features/car_entry_detail/presentation/widgets/image_picker_row.dart';
 import 'package:boitodex/features/car_entry_detail/presentation/widgets/keyword_section.dart';
 
 class CarEntryScreen extends ConsumerStatefulWidget {
-  const CarEntryScreen({required this.collectionId, super.key});
+  const CarEntryScreen({
+    required this.collectionId,
+    this.existingCar,
+    super.key,
+  });
 
   final String collectionId;
+  final Car? existingCar;
+
+  bool get isEditing => existingCar != null;
 
   @override
   ConsumerState<CarEntryScreen> createState() => _CarEntryScreenState();
 }
 
 class _CarEntryScreenState extends ConsumerState<CarEntryScreen> {
-  final _notesController = TextEditingController();
+  late final _notesController = TextEditingController(
+    text: widget.existingCar?.notes ?? '',
+  );
   final _keywordInputController = TextEditingController();
   final _keywordFocusNode = FocusNode();
-  final _keywords = <String>[];
-  final _pickedImages = <File>[];
+  late final _keywords = <String>[
+    ...?widget.existingCar?.keywords.map((k) => k.label),
+  ];
+  late final _pickedImages = <File>[
+    for (final image in widget.existingCar?.images ?? const [])
+      if (image.localPath != null) File(image.localPath!),
+  ];
 
   @override
   void dispose() {
@@ -84,12 +99,12 @@ class _CarEntryScreenState extends ConsumerState<CarEntryScreen> {
   }
 
   Future<void> _save() async {
-    // Si l'utilisateur a tapé un mot sans valider, on le récupère quand même.
     _addKeyword(_keywordInputController.text);
 
     await ref
         .read(carEntryDetailControllerProvider.notifier)
         .saveCar(
+          id: widget.existingCar?.id,
           collectionId: widget.collectionId,
           notes: _notesController.text.trim().isEmpty
               ? null
@@ -111,7 +126,11 @@ class _CarEntryScreenState extends ConsumerState<CarEntryScreen> {
     final isLoading = ref.watch(carEntryDetailControllerProvider).isLoading;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Ajouter une voiture')),
+      appBar: AppBar(
+        title: Text(
+          widget.isEditing ? 'Modifier la voiture' : 'Ajouter une voiture',
+        ),
+      ),
       body: ListView(
         padding: EdgeInsets.fromLTRB(
           AppSpacing.md,

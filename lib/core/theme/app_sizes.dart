@@ -12,4 +12,9 @@ abstract class AppSizes {
 
   static const double debugBadgeHorizontalPadding = 6;
   static const double debugBadgeVerticalPadding = 2;
+
+  static const double galleryAspectRatio = 4 / 3;
+  static const double galleryIndicatorDotSize = 6;
+  static const double galleryZoomMinScale = 1;
+  static const double galleryZoomMaxScale = 4;
 }

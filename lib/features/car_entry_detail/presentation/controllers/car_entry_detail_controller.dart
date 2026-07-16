@@ -10,6 +10,7 @@ class CarEntryDetailController extends _$CarEntryDetailController {
   FutureOr<void> build() {}
 
   Future<void> saveCar({
+    String? id,
     required String collectionId,
     String? notes,
     required List<String> keywordLabels,
@@ -20,11 +21,19 @@ class CarEntryDetailController extends _$CarEntryDetailController {
       () => ref
           .read(carRepositoryProvider)
           .saveCar(
+            id: id,
             collectionId: collectionId,
             notes: notes,
             keywordLabels: keywordLabels,
             imagePaths: imagePaths,
           ),
+    );
+  }
+
+  Future<void> deleteCar(String carId) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(
+      () => ref.read(carRepositoryProvider).softDeleteCar(carId),
     );
   }
 }
