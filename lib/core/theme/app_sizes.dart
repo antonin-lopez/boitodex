@@ -5,7 +5,7 @@ abstract class AppSizes {
   static const double spinner = 20;
   static const double spinnerStrokeWidth = 2;
 
-  static const double notesFieldMaxLines = 5;
+  static const int notesFieldMaxLines = 5;
 
   static const int catalogGridCrossAxisCount = 2;
   static const double catalogGridAspectRatio = 0.8;

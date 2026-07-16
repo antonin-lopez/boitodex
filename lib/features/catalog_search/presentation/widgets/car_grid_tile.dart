@@ -105,7 +105,7 @@ class _DebugScoreBadge extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: AppColors.imageOverlayScrim,
-          borderRadius: BorderRadius.circular(AppRadius.sm),
+          borderRadius: BorderRadius.circular(AppRadius.md),
         ),
         child: Text(
           score.toStringAsFixed(2),

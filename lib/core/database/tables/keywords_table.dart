@@ -8,7 +8,8 @@ class KeywordsTable extends Table {
 
   TextColumn get id => text()();
 
-  TextColumn get collectionId => text().references(CollectionsTable, #id)();
+  TextColumn get collectionId =>
+      text().references(CollectionsTable, #id, onDelete: KeyAction.cascade)();
 
   TextColumn get label => text().withLength(min: 1, max: 50)();
 

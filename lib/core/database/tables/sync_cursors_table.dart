@@ -8,7 +8,8 @@ class SyncCursorsTable extends Table {
 
   TextColumn get deviceId => text()();
 
-  TextColumn get collectionId => text().references(CollectionsTable, #id)();
+  TextColumn get collectionId =>
+      text().references(CollectionsTable, #id, onDelete: KeyAction.cascade)();
 
   DateTimeColumn get lastSyncedAt => dateTime()();
 

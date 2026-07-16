@@ -92,6 +92,15 @@ void main() {
         final active = await repository.getActiveCollection();
         expect(active, isNull);
       });
+
+      test(
+        'should cascade delete cars and keywords when collection is deleted',
+        () async {
+          final created = await repository.createCollection();
+
+          await repository.deleteCollection(created.id);
+        },
+      );
     });
   });
 }

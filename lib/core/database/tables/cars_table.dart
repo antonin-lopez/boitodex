@@ -11,7 +11,8 @@ class CarsTable extends Table {
 
   TextColumn get id => text()();
 
-  TextColumn get collectionId => text().references(CollectionsTable, #id)();
+  TextColumn get collectionId =>
+      text().references(CollectionsTable, #id, onDelete: KeyAction.cascade)();
 
   TextColumn get notes => text().nullable()();
 

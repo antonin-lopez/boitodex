@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:boitodex/core/theme/app_sizes.dart';
+import 'package:boitodex/core/widgets/error_snackbar.dart';
 import 'package:boitodex/core/theme/app_spacing.dart';
 import 'package:boitodex/core/utils/image_compressor.dart';
 import 'package:boitodex/core/widgets/async_result_handler.dart';
@@ -65,11 +66,21 @@ class _CarEntryScreenState extends ConsumerState<CarEntryScreen> {
     final xFiles = await ImagePicker().pickMultiImage();
     if (xFiles.isEmpty) return;
 
-    for (final xFile in xFiles) {
-      final compressed = await ImageCompressor.compressImage(File(xFile.path));
-      if (compressed != null) _pickedImages.add(compressed);
+    final compressedFiles = <File>[];
+    try {
+      for (final xFile in xFiles) {
+        final compressed = await ImageCompressor.compressImage(
+          File(xFile.path),
+        );
+        if (compressed != null) compressedFiles.add(compressed);
+      }
+    } catch (error) {
+      if (!mounted) return;
+      showErrorSnackBar(context, error);
+      return;
     }
-    setState(() {});
+
+    setState(() => _pickedImages.addAll(compressedFiles));
   }
 
   Future<void> _save() async {
@@ -121,7 +132,7 @@ class _CarEntryScreenState extends ConsumerState<CarEntryScreen> {
           const SizedBox(height: AppSpacing.md),
           TextField(
             controller: _notesController,
-            maxLines: AppSizes.notesFieldMaxLines.toInt(),
+            maxLines: AppSizes.notesFieldMaxLines,
             decoration: const InputDecoration(labelText: 'Notes'),
           ),
           const SizedBox(height: AppSpacing.lg),
