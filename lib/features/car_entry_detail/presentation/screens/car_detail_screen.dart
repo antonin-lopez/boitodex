@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:boitodex/core/extensions/build_context_extensions.dart';
 import 'package:boitodex/core/theme/app_spacing.dart';
 import 'package:boitodex/core/theme/app_sizes.dart';
 import 'package:boitodex/core/widgets/async_result_handler.dart';
+import 'package:boitodex/features/car/data/providers/car_providers.dart';
 import 'package:boitodex/features/car/domain/models/car.dart';
 import 'package:boitodex/features/car_entry_detail/presentation/controllers/car_entry_detail_controller.dart';
 import 'package:boitodex/features/car_entry_detail/presentation/screens/car_entry_screen.dart';
 import 'package:boitodex/features/car_entry_detail/presentation/widgets/car_image_gallery.dart';
 
-class CarDetailScreen extends ConsumerWidget {
+class CarDetailScreen extends ConsumerStatefulWidget {
   const CarDetailScreen({
     required this.car,
     required this.collectionId,
@@ -19,13 +21,29 @@ class CarDetailScreen extends ConsumerWidget {
   final Car car;
   final String collectionId;
 
+  @override
+  ConsumerState<CarDetailScreen> createState() => _CarDetailScreenState();
+}
+
+class _CarDetailScreenState extends ConsumerState<CarDetailScreen> {
+  late Car _car = widget.car;
+
   Future<void> _edit(BuildContext context) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) =>
-            CarEntryScreen(collectionId: collectionId, existingCar: car),
+        builder: (_) => CarEntryScreen(
+          collectionId: widget.collectionId,
+          existingCar: _car,
+        ),
       ),
     );
+    if (!mounted) return;
+
+    // La fiche a pu être modifiée pendant l'écran d'édition : on rafraîchit.
+    final refreshed = await ref.read(carRepositoryProvider).getCarById(_car.id);
+    if (refreshed != null && mounted) {
+      setState(() => _car = refreshed);
+    }
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
@@ -48,7 +66,9 @@ class CarDetailScreen extends ConsumerWidget {
     );
     if (confirmed != true || !context.mounted) return;
 
-    await ref.read(carEntryDetailControllerProvider.notifier).deleteCar(car.id);
+    await ref
+        .read(carEntryDetailControllerProvider.notifier)
+        .deleteCar(_car.id);
     if (!context.mounted) return;
 
     handleAsyncActionResult(
@@ -59,10 +79,25 @@ class CarDetailScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final isLoading = ref.watch(carEntryDetailControllerProvider).isLoading;
-    final hasKeywords = car.keywords.isNotEmpty;
-    final hasNotes = car.notes != null && car.notes!.isNotEmpty;
+    final hasKeywords = _car.keywords.isNotEmpty;
+    final hasNotes = _car.notes != null && _car.notes!.isNotEmpty;
+
+    final sections = <Widget>[
+      CarImageGallery(images: _car.images),
+      if (hasKeywords)
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.xs,
+          children: [
+            for (final keyword in _car.keywords)
+              Chip(label: Text(keyword.label)),
+          ],
+        ),
+      if (hasNotes)
+        Text(_car.notes!, style: Theme.of(context).textTheme.bodyLarge),
+    ];
 
     return Scaffold(
       appBar: AppBar(
@@ -94,23 +129,16 @@ class CarDetailScreen extends ConsumerWidget {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.md + context.bottomSystemInset,
+        ),
         children: [
-          CarImageGallery(images: car.images),
-          if (hasKeywords) ...[
-            const SizedBox(height: AppSpacing.md),
-            Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.xs,
-              children: [
-                for (final keyword in car.keywords)
-                  Chip(label: Text(keyword.label)),
-              ],
-            ),
-          ],
-          if (hasNotes) ...[
-            const SizedBox(height: AppSpacing.md),
-            Text(car.notes!, style: Theme.of(context).textTheme.bodyLarge),
+          for (var i = 0; i < sections.length; i++) ...[
+            if (i > 0) const SizedBox(height: AppSpacing.md),
+            sections[i],
           ],
         ],
       ),
