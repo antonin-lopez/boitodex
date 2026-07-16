@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:boitodex/core/constants/app_constants.dart';
+import 'package:boitodex/core/theme/app_spacing.dart';
+import 'package:boitodex/core/widgets/async_result_handler.dart';
+import 'package:boitodex/core/widgets/primary_loading_button.dart';
 import 'package:boitodex/features/onboarding_pairing/data/providers/onboarding_pairing_providers.dart';
 import 'package:boitodex/features/onboarding_pairing/presentation/controllers/onboarding_pairing_controller.dart';
 import 'package:boitodex/features/onboarding_pairing/presentation/screens/join_collection_screen.dart';
@@ -9,63 +12,17 @@ import 'package:boitodex/features/onboarding_pairing/presentation/screens/join_c
 class OnboardingScreen extends ConsumerWidget {
   const OnboardingScreen({super.key});
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isLoading = ref.watch(onboardingPairingControllerProvider).isLoading;
+  Future<void> _createCollection(BuildContext context, WidgetRef ref) async {
+    await ref
+        .read(onboardingPairingControllerProvider.notifier)
+        .createCollection();
+    if (!context.mounted) return;
 
-    Future<void> createCollection() async {
-      await ref
-          .read(onboardingPairingControllerProvider.notifier)
-          .createCollection();
-      if (!context.mounted) return;
-
-      ref
-          .read(onboardingPairingControllerProvider)
-          .when(
-            data: (collection) =>
-                _showPairingCodeDialog(context, ref, collection!.pairingCode),
-            error: (error, _) => ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text('$error'))),
-            loading: () {},
-          );
-    }
-
-    return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                AppConstants.appName,
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 32),
-              FilledButton(
-                onPressed: isLoading ? null : createCollection,
-                child: const Text('Créer une collection'),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: isLoading
-                    ? null
-                    : () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const JoinCollectionScreen(),
-                        ),
-                      ),
-                child: const Text('Rejoindre une collection'),
-              ),
-              if (isLoading) ...[
-                const SizedBox(height: 24),
-                const CircularProgressIndicator(),
-              ],
-            ],
-          ),
-        ),
-      ),
+    handleAsyncActionResult(
+      context,
+      ref.read(onboardingPairingControllerProvider),
+      onSuccess: (collection) =>
+          _showPairingCodeDialog(context, ref, collection!.pairingCode),
     );
   }
 
@@ -89,6 +46,45 @@ class OnboardingScreen extends ConsumerWidget {
             child: const Text('OK'),
           ),
         ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isLoading = ref.watch(onboardingPairingControllerProvider).isLoading;
+
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                AppConstants.appName,
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              PrimaryLoadingButton(
+                label: 'Créer une collection',
+                isLoading: isLoading,
+                onPressed: () => _createCollection(context, ref),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              OutlinedButton(
+                onPressed: isLoading
+                    ? null
+                    : () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const JoinCollectionScreen(),
+                        ),
+                      ),
+                child: const Text('Rejoindre une collection'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

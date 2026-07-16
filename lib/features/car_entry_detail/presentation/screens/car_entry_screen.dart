@@ -1,11 +1,18 @@
 import 'dart:io';
 
+import 'package:boitodex/core/extensions/build_context_extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:boitodex/core/theme/app_sizes.dart';
+import 'package:boitodex/core/theme/app_spacing.dart';
 import 'package:boitodex/core/utils/image_compressor.dart';
+import 'package:boitodex/core/widgets/async_result_handler.dart';
+import 'package:boitodex/core/widgets/primary_loading_button.dart';
 import 'package:boitodex/features/car_entry_detail/presentation/controllers/car_entry_detail_controller.dart';
+import 'package:boitodex/features/car_entry_detail/presentation/widgets/image_picker_row.dart';
+import 'package:boitodex/features/car_entry_detail/presentation/widgets/keyword_section.dart';
 
 class CarEntryScreen extends ConsumerStatefulWidget {
   const CarEntryScreen({required this.collectionId, super.key});
@@ -81,15 +88,11 @@ class _CarEntryScreenState extends ConsumerState<CarEntryScreen> {
         );
     if (!mounted) return;
 
-    ref
-        .read(carEntryDetailControllerProvider)
-        .when(
-          data: (_) => Navigator.of(context).pop(),
-          error: (error, _) => ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('$error'))),
-          loading: () {},
-        );
+    handleAsyncActionResult(
+      context,
+      ref.read(carEntryDetailControllerProvider),
+      onSuccess: (_) => Navigator.of(context).pop(),
+    );
   }
 
   @override
@@ -99,79 +102,33 @@ class _CarEntryScreenState extends ConsumerState<CarEntryScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Ajouter une voiture')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.md + context.bottomSystemInset,
+        ),
         children: [
-          SizedBox(
-            height: 96,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                for (final image in _pickedImages)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(
-                        image,
-                        width: 96,
-                        height: 96,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                IconButton.filledTonal(
-                  onPressed: _pickImages,
-                  icon: const Icon(Icons.add_a_photo),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text('Mots-clés', style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 8),
-          if (_keywords.isNotEmpty) ...[
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                for (final keyword in _keywords)
-                  InputChip(
-                    label: Text(keyword),
-                    onDeleted: () => _removeKeyword(keyword),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-          ],
-          TextField(
+          ImagePickerRow(images: _pickedImages, onAddPressed: _pickImages),
+          const SizedBox(height: AppSpacing.md),
+          KeywordSection(
+            keywords: _keywords,
             controller: _keywordInputController,
             focusNode: _keywordFocusNode,
-            textInputAction: TextInputAction.done,
-            decoration: InputDecoration(
-              hintText: 'Ajouter un mot-clé',
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.add),
-                onPressed: () => _addKeyword(_keywordInputController.text),
-              ),
-            ),
             onSubmitted: _addKeyword,
+            onRemove: _removeKeyword,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           TextField(
             controller: _notesController,
-            maxLines: 5,
+            maxLines: AppSizes.notesFieldMaxLines.toInt(),
             decoration: const InputDecoration(labelText: 'Notes'),
           ),
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: isLoading ? null : _save,
-            child: isLoading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Enregistrer'),
+          const SizedBox(height: AppSpacing.lg),
+          PrimaryLoadingButton(
+            label: 'Enregistrer',
+            isLoading: isLoading,
+            onPressed: _save,
           ),
         ],
       ),

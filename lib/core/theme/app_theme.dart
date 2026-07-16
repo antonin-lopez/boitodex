@@ -7,7 +7,7 @@ abstract class AppTheme {
 
   static ThemeData _themeFor(Brightness brightness) {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: Colors.deepOrange,
+      seedColor: Colors.deepPurple,
       brightness: brightness,
     );
 

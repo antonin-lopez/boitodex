@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:boitodex/features/car/data/providers/car_providers.dart';
-import 'package:boitodex/features/car/domain/models/car.dart';
 import 'package:boitodex/features/catalog_search/presentation/controllers/catalog_search_controller.dart';
+import 'package:boitodex/features/catalog_search/presentation/widgets/car_grid_view.dart';
 
 class CatalogScreen extends ConsumerStatefulWidget {
   const CatalogScreen({required this.collectionId, super.key});
@@ -59,7 +59,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
       ),
       body: _isSearching
           ? searchResults.when(
-              data: (results) => _CarListView(
+              data: (results) => CarGridView(
                 cars: results.map((r) => r.car).toList(),
                 scores: {for (final r in results) r.car.id: r.score},
               ),
@@ -67,7 +67,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
               error: (error, _) => Center(child: Text('$error')),
             )
           : allCars.when(
-              data: (cars) => _CarListView(cars: cars),
+              data: (cars) => CarGridView(cars: cars),
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, _) => Center(child: Text('$error')),
             ),
@@ -79,36 +79,6 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
         ),
         child: const Icon(Icons.add),
       ),
-    );
-  }
-}
-
-class _CarListView extends StatelessWidget {
-  const _CarListView({required this.cars, this.scores});
-
-  final List<Car> cars;
-  final Map<String, double>? scores;
-
-  @override
-  Widget build(BuildContext context) {
-    if (cars.isEmpty) {
-      return const Center(child: Text('Aucune voiture'));
-    }
-    return ListView.builder(
-      itemCount: cars.length,
-      itemBuilder: (context, index) {
-        final car = cars[index];
-        final score = scores?[car.id];
-        return ListTile(
-          title: Text(
-            car.keywords.isEmpty
-                ? 'Sans mot-clé'
-                : car.keywords.map((k) => k.label).join(', '),
-          ),
-          subtitle: car.notes == null ? null : Text(car.notes!),
-          trailing: score == null ? null : Text(score.toStringAsFixed(2)),
-        );
-      },
     );
   }
 }

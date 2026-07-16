@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:boitodex/core/theme/app_spacing.dart';
+import 'package:boitodex/core/utils/pairing_code_generator.dart';
+import 'package:boitodex/core/widgets/async_result_handler.dart';
+import 'package:boitodex/core/widgets/primary_loading_button.dart';
 import 'package:boitodex/features/onboarding_pairing/presentation/controllers/onboarding_pairing_controller.dart';
 
 class JoinCollectionScreen extends ConsumerStatefulWidget {
@@ -27,15 +31,11 @@ class _JoinCollectionScreenState extends ConsumerState<JoinCollectionScreen> {
         .joinCollection(code);
     if (!mounted) return;
 
-    ref
-        .read(onboardingPairingControllerProvider)
-        .when(
-          data: (_) => Navigator.of(context).pop(),
-          error: (error, _) => ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('$error'))),
-          loading: () {},
-        );
+    handleAsyncActionResult(
+      context,
+      ref.read(onboardingPairingControllerProvider),
+      onSuccess: (_) => Navigator.of(context).pop(),
+    );
   }
 
   @override
@@ -45,28 +45,23 @@ class _JoinCollectionScreenState extends ConsumerState<JoinCollectionScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Rejoindre une collection')),
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: _pairingCodeController,
               textCapitalization: TextCapitalization.characters,
-              maxLength: 8,
+              maxLength: PairingCodeGenerator.codeLength,
               decoration: const InputDecoration(
                 labelText: 'Code de la collection',
               ),
             ),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: isLoading ? null : _joinCollection,
-              child: isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Rejoindre'),
+            const SizedBox(height: AppSpacing.md),
+            PrimaryLoadingButton(
+              label: 'Rejoindre',
+              isLoading: isLoading,
+              onPressed: _joinCollection,
             ),
           ],
         ),
