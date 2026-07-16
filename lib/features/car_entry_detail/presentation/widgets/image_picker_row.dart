@@ -10,11 +10,13 @@ class ImagePickerRow extends StatelessWidget {
   const ImagePickerRow({
     required this.images,
     required this.onAddPressed,
+    this.onRemove,
     super.key,
   });
 
   final List<File> images;
   final VoidCallback onAddPressed;
+  final ValueChanged<int>? onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -23,22 +25,52 @@ class ImagePickerRow extends StatelessWidget {
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
-          for (final image in images)
+          for (var i = 0; i < images.length; i++)
             Padding(
               padding: const EdgeInsets.only(right: AppSpacing.sm),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(AppRadius.md),
-                child: Image.file(
-                  image,
-                  width: AppSizes.thumbnail,
-                  height: AppSizes.thumbnail,
-                  fit: BoxFit.cover,
+              child: SizedBox(
+                width: AppSizes.thumbnail,
+                height: AppSizes.thumbnail,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      child: Image.file(images[i], fit: BoxFit.cover),
+                    ),
+                    if (onRemove != null)
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: GestureDetector(
+                          onTap: () => onRemove!(i),
+                          child: const CircleAvatar(
+                            radius: 11,
+                            backgroundColor: Colors.black54,
+                            child: Icon(
+                              Icons.close,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
-          IconButton.filledTonal(
-            onPressed: onAddPressed,
-            icon: const Icon(Icons.add_a_photo),
+          SizedBox(
+            width: AppSizes.thumbnail,
+            height: AppSizes.thumbnail,
+            child: IconButton.filledTonal(
+              style: IconButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+              ),
+              onPressed: onAddPressed,
+              icon: const Icon(Icons.add_a_photo),
+            ),
           ),
         ],
       ),

@@ -32,8 +32,7 @@ class CarImageGallery extends StatelessWidget {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      padding:
-          EdgeInsets.zero, // <- empêche l'injection auto du MediaQuery.padding
+      padding: EdgeInsets.zero,
       itemCount: paths.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,

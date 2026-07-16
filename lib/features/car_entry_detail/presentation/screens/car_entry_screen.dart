@@ -117,7 +117,16 @@ class _CarEntryScreenState extends ConsumerState<CarEntryScreen> {
     handleAsyncActionResult(
       context,
       ref.read(carEntryDetailControllerProvider),
-      onSuccess: (_) => Navigator.of(context).pop(),
+      onSuccess: (_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              widget.isEditing ? 'Voiture mise à jour' : 'Voiture ajoutée',
+            ),
+          ),
+        );
+        Navigator.of(context).pop();
+      },
     );
   }
 
@@ -139,7 +148,13 @@ class _CarEntryScreenState extends ConsumerState<CarEntryScreen> {
           AppSpacing.md + context.bottomSystemInset,
         ),
         children: [
-          ImagePickerRow(images: _pickedImages, onAddPressed: _pickImages),
+          Text('Photos', style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: AppSpacing.sm),
+          ImagePickerRow(
+            images: _pickedImages,
+            onAddPressed: _pickImages,
+            onRemove: (index) => setState(() => _pickedImages.removeAt(index)),
+          ),
           const SizedBox(height: AppSpacing.md),
           KeywordSection(
             keywords: _keywords,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:boitodex/core/theme/app_spacing.dart';
 import 'package:boitodex/core/extensions/build_context_extensions.dart';
 import 'package:boitodex/core/theme/app_sizes.dart';
+import 'package:boitodex/core/widgets/empty_state.dart';
 import 'package:boitodex/features/car/domain/models/car.dart';
 import 'package:boitodex/features/catalog_search/presentation/widgets/car_grid_tile.dart';
 
@@ -15,13 +16,17 @@ class CarGridView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (cars.isEmpty) {
-      return const Center(child: Text('Aucune voiture'));
+      return const EmptyState(
+        icon: Icons.directions_car_outlined,
+        message:
+            'Aucune voiture pour l’instant.\nAppuie sur + pour ajouter la première.',
+      );
     }
     return GridView.builder(
       padding: EdgeInsets.fromLTRB(
+        AppSpacing.md,
         AppSpacing.sm,
-        AppSpacing.sm,
-        AppSpacing.sm,
+        AppSpacing.md,
         AppSpacing.sm + context.bottomSystemInset,
       ),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(

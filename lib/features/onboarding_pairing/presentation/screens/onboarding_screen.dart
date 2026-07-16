@@ -35,10 +35,14 @@ class OnboardingScreen extends ConsumerWidget {
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Collection créée'),
-        content: Text('Code à partager avec ta famille :\n$pairingCode'),
+        icon: const Icon(Icons.celebration_outlined),
+        title: const Text('Collection créée !'),
+        content: Text(
+          'Partage ce code avec ta famille pour qu’elle rejoigne ta collection :\n\n$pairingCode',
+          textAlign: TextAlign.center,
+        ),
         actions: [
-          TextButton(
+          FilledButton(
             onPressed: () {
               Navigator.of(dialogContext).pop();
               ref.invalidate(activeCollectionProvider);
@@ -53,6 +57,7 @@ class OnboardingScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isLoading = ref.watch(onboardingPairingControllerProvider).isLoading;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       body: Center(
@@ -61,9 +66,23 @@ class OnboardingScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Icon(
+                Icons.directions_car_filled,
+                size: 64,
+                color: colorScheme.primary,
+              ),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 AppConstants.appName,
                 style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Catalogue et partage ta collection de miniatures.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: AppSpacing.xl),
               PrimaryLoadingButton(
