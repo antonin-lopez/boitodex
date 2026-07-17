@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:boitodex/core/utils/system_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -27,16 +28,13 @@ class _CarImageViewerScreenState extends State<CarImageViewerScreen> {
   @override
   void dispose() {
     _pageController.dispose();
-    // On restaure l'UI système normale en quittant l'écran.
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemUi.enableEdgeToEdge();
     super.dispose();
   }
 
   void _toggleOverlay() {
     setState(() => _overlayVisible = !_overlayVisible);
-    SystemChrome.setEnabledSystemUIMode(
-      _overlayVisible ? SystemUiMode.edgeToEdge : SystemUiMode.immersiveSticky,
-    );
+    _overlayVisible ? SystemUi.enableEdgeToEdge() : SystemUi.enableImmersive();
   }
 
   @override

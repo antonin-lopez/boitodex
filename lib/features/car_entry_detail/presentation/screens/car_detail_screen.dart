@@ -74,16 +74,12 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen> {
     handleAsyncActionResult(
       context,
       ref.read(carEntryDetailControllerProvider),
-      onSuccess: (_) => handleAsyncActionResult(
-        context,
-        ref.read(carEntryDetailControllerProvider),
-        onSuccess: (_) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Voiture supprimée')));
-          Navigator.of(context).pop();
-        },
-      ),
+      onSuccess: (_) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Voiture supprimée')));
+        Navigator.of(context).pop();
+      },
     );
   }
 
