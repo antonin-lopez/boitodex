@@ -17,4 +17,8 @@ abstract class AppSizes {
   static const double galleryIndicatorDotSize = 6;
   static const double galleryZoomMinScale = 1;
   static const double galleryZoomMaxScale = 4;
+
+  static const double heroImageAspectRatio = 4 / 3;
+  static const double heroImageMinHeight = 220;
+  static const double heroImageMaxHeight = 340;
 }

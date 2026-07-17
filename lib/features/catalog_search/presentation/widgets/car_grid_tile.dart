@@ -68,15 +68,18 @@ class CarGridTile extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        localPath == null
-            ? _ImagePlaceholder(colorScheme: Theme.of(context).colorScheme)
-            : Image.file(
-                File(localPath),
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => _ImagePlaceholder(
-                  colorScheme: Theme.of(context).colorScheme,
+        Hero(
+          tag: 'car-image-${car.id}',
+          child: localPath == null
+              ? _ImagePlaceholder(colorScheme: Theme.of(context).colorScheme)
+              : Image.file(
+                  File(localPath),
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => _ImagePlaceholder(
+                    colorScheme: Theme.of(context).colorScheme,
+                  ),
                 ),
-              ),
+        ),
         if (kDebugMode && score != null) _DebugScoreBadge(score: score!),
       ],
     );
