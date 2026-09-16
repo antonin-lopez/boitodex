@@ -1,4 +1,4 @@
-import 'package:boitodex/features/car_entry_detail/presentation/screens/car_entry_screen.dart';
+import 'package:boitodex/features/item_entry_detail/presentation/screens/item_entry_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,9 +6,9 @@ import 'package:boitodex/core/constants/app_constants.dart';
 import 'package:boitodex/core/theme/app_radius.dart';
 import 'package:boitodex/core/theme/app_spacing.dart';
 import 'package:boitodex/core/widgets/empty_state.dart';
-import 'package:boitodex/features/car/data/providers/car_providers.dart';
+import 'package:boitodex/features/item/data/providers/item_providers.dart';
 import 'package:boitodex/features/catalog_search/presentation/controllers/catalog_search_controller.dart';
-import 'package:boitodex/features/catalog_search/presentation/widgets/car_grid_view.dart';
+import 'package:boitodex/features/catalog_search/presentation/widgets/item_grid_view.dart';
 
 class CatalogScreen extends ConsumerStatefulWidget {
   const CatalogScreen({required this.collectionId, super.key});
@@ -46,7 +46,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final allCars = ref.watch(carsByCollectionProvider(widget.collectionId));
+    final allItems = ref.watch(itemsByCollectionProvider(widget.collectionId));
     final searchResults = ref.watch(
       catalogSearchControllerProvider(widget.collectionId),
     );
@@ -93,18 +93,18 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
                             icon: Icons.search_off,
                             message: 'Aucun résultat pour cette recherche',
                           )
-                        : CarGridView(
-                            cars: results.map((r) => r.car).toList(),
+                        : ItemGridView(
+                            items: results.map((r) => r.item).toList(),
                             scores: {
-                              for (final r in results) r.car.id: r.score,
+                              for (final r in results) r.item.id: r.score,
                             },
                           ),
                     loading: () =>
                         const Center(child: CircularProgressIndicator()),
                     error: (error, _) => Center(child: Text('$error')),
                   )
-                : allCars.when(
-                    data: (cars) => CarGridView(cars: cars),
+                : allItems.when(
+                    data: (items) => ItemGridView(items: items),
                     loading: () =>
                         const Center(child: CircularProgressIndicator()),
                     error: (error, _) => Center(child: Text('$error')),
@@ -115,7 +115,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () => Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => CarEntryScreen(collectionId: widget.collectionId),
+            builder: (_) => ItemEntryScreen(collectionId: widget.collectionId),
           ),
         ),
         child: const Icon(Icons.add),

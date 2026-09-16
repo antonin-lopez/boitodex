@@ -1,29 +1,29 @@
 import 'dart:typed_data';
 
-import 'package:boitodex/core/database/daos/cars_dao.dart';
+import 'package:boitodex/core/database/daos/items_dao.dart';
 import 'package:boitodex/core/ml/cosine_similarity.dart';
 import 'package:boitodex/core/ml/embedding_engine.dart';
-import 'package:boitodex/features/car/domain/models/car.dart';
-import 'package:boitodex/features/car/domain/repositories/car_repository.dart';
+import 'package:boitodex/features/item/domain/models/item.dart';
+import 'package:boitodex/features/item/domain/repositories/item_repository.dart';
 import 'package:boitodex/features/catalog_search/domain/constants/catalog_search_constants.dart';
 import 'package:boitodex/features/catalog_search/domain/models/search_result.dart';
 import 'package:boitodex/features/catalog_search/domain/repositories/catalog_search_repository.dart';
 
 class CatalogSearchRepositoryImpl implements CatalogSearchRepository {
-  final CarsDao _carsDao;
-  final CarRepository _carRepository;
+  final ItemsDao _itemsDao;
+  final ItemRepository _itemRepository;
   final EmbeddingEngine _embeddingEngine;
 
   final Map<String, Float32List> _queryEmbeddingCache = {};
 
   CatalogSearchRepositoryImpl(
-    this._carsDao,
-    this._carRepository,
+    this._itemsDao,
+    this._itemRepository,
     this._embeddingEngine,
   );
 
   @override
-  Future<List<SearchResult>> searchCars({
+  Future<List<SearchResult>> searchItems({
     required String query,
     required String collectionId,
   }) async {
@@ -42,33 +42,33 @@ class CatalogSearchRepositoryImpl implements CatalogSearchRepository {
         .map(_normalizeForMatching)
         .toList();
 
-    final ftsTask = _carsDao.searchCarIdsByFts(cleanQuery, collectionId);
-    final domainCarsTask = _carRepository
-        .watchCarsByCollection(collectionId)
+    final ftsTask = _itemsDao.searchItemIdsByFts(cleanQuery, collectionId);
+    final domainItemsTask = _itemRepository
+        .watchItemsByCollection(collectionId)
         .first;
     final queryVectorTask = _getOrComputeQueryEmbedding(cleanQuery);
 
     final results = await Future.wait([
       ftsTask,
-      domainCarsTask,
+      domainItemsTask,
       queryVectorTask,
     ]);
 
-    final ftsCarIds = (results[0] as List<String>).toSet();
-    final domainCarsList = results[1] as List<Car>;
+    final ftsItemIds = (results[0] as List<String>).toSet();
+    final domainItemsList = results[1] as List<Item>;
     final queryFloat32 = results[2] as Float32List;
 
     final resultsMap = <String, SearchResult>{};
 
-    for (final car in domainCarsList) {
-      final double? ftsScore = ftsCarIds.contains(car.id)
-          ? _matchedTermRatio(car, queryTerms)
+    for (final item in domainItemsList) {
+      final double? ftsScore = ftsItemIds.contains(item.id)
+          ? _matchedTermRatio(item, queryTerms)
           : null;
 
       double? semanticScore;
-      final carEmbedding = car.embedding;
-      if (carEmbedding != null) {
-        semanticScore = cosineSimilarity(queryFloat32, carEmbedding);
+      final itemEmbedding = item.embedding;
+      if (itemEmbedding != null) {
+        semanticScore = cosineSimilarity(queryFloat32, itemEmbedding);
       }
 
       final semanticIsBetter =
@@ -77,14 +77,14 @@ class CatalogSearchRepositoryImpl implements CatalogSearchRepository {
           (ftsScore == null || semanticScore > ftsScore);
 
       if (semanticIsBetter) {
-        resultsMap[car.id] = SearchResult(
-          car: car,
+        resultsMap[item.id] = SearchResult(
+          item: item,
           score: semanticScore,
           isSemanticMatch: true,
         );
       } else if (ftsScore != null) {
-        resultsMap[car.id] = SearchResult(
-          car: car,
+        resultsMap[item.id] = SearchResult(
+          item: item,
           score: ftsScore,
           isSemanticMatch: false,
         );
@@ -98,16 +98,16 @@ class CatalogSearchRepositoryImpl implements CatalogSearchRepository {
     return sortedResults;
   }
 
-  double _matchedTermRatio(Car car, List<String> queryTerms) {
+  double _matchedTermRatio(Item item, List<String> queryTerms) {
     if (queryTerms.isEmpty) return 0.0;
 
-    final notesWords = (car.notes ?? '')
+    final notesWords = (item.notes ?? '')
         .toLowerCase()
         .split(RegExp(r'\s+'))
         .map(_normalizeForMatching)
         .toList();
 
-    final keywordWords = car.keywords
+    final keywordWords = item.keywords
         .expand((k) => k.label.toLowerCase().split(RegExp(r'\s+')))
         .map(_normalizeForMatching)
         .toList();

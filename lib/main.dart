@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:boitodex/app.dart';
 import 'package:boitodex/core/providers/core_providers.dart';
-import 'package:boitodex/core/utils/system_ui.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemUi.enableEdgeToEdge();
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   final container = ProviderContainer();
   await container.read(embeddingEngineProvider).initialize();

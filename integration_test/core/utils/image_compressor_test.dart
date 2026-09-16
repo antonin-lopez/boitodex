@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path/path.dart' as p;
@@ -14,6 +15,7 @@ void main() {
 
   group('ImageCompressor', () {
     late File rawImageFile;
+    late XFile rawImageXFile;
 
     setUpAll(() async {
       final tempDir = await getTemporaryDirectory();
@@ -30,6 +32,7 @@ void main() {
 
       rawImageFile = File(filePath);
       await rawImageFile.writeAsBytes(byteData!.buffer.asUint8List());
+      rawImageXFile = XFile(filePath);
     });
 
     tearDownAll(() async {
@@ -38,32 +41,29 @@ void main() {
       }
     });
 
-    group('compressImage', () {
+    group('compress', () {
       test('should compress image and return a valid non-null file', () async {
-        final compressedFile = await ImageCompressor.compressImage(
-          rawImageFile,
-        );
+        final compressed = await ImageCompressor.compress(rawImageXFile);
 
-        expect(compressedFile, isNotNull);
-        expect(await compressedFile!.exists(), isTrue);
+        expect(compressed, isNotNull);
+        expect(await File(compressed!.path).exists(), isTrue);
       });
 
       test('should save compressed file as JPEG format', () async {
-        final compressedFile = await ImageCompressor.compressImage(
-          rawImageFile,
-        );
+        final compressed = await ImageCompressor.compress(rawImageXFile);
 
-        expect(compressedFile!.path.endsWith('.jpg'), isTrue);
+        expect(compressed, isNotNull);
+        expect(compressed!.path.endsWith('.jpg'), isTrue);
       });
 
       test(
         'should significantly reduce file size compared to raw uncompressed image',
         () async {
           final originalSize = await rawImageFile.length();
-          final compressedFile = await ImageCompressor.compressImage(
-            rawImageFile,
-          );
-          final compressedSize = await compressedFile!.length();
+          final compressed = await ImageCompressor.compress(rawImageXFile);
+
+          expect(compressed, isNotNull);
+          final compressedSize = await compressed!.length();
 
           expect(compressedSize, lessThan(originalSize));
         },

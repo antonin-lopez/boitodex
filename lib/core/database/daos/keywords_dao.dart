@@ -1,17 +1,19 @@
-import 'package:boitodex/core/utils/uuid_generator.dart';
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 
 import '../app_database.dart';
-import '../tables/car_keywords_table.dart';
+import '../tables/item_keywords_table.dart';
 import '../tables/keywords_table.dart';
 
 part 'keywords_dao.g.dart';
 
-@DriftAccessor(tables: [KeywordsTable, CarKeywordsTable])
+/// Data access object for managing keywords and item associations.
+@DriftAccessor(tables: [KeywordsTable, ItemKeywordsTable])
 class KeywordsDao extends DatabaseAccessor<AppDatabase>
     with _$KeywordsDaoMixin {
   KeywordsDao(super.db);
 
+  /// Watches all keywords for a given collection, sorted alphabetically.
   Stream<List<KeywordData>> watchKeywordsByCollection(String collectionId) {
     return (select(keywordsTable)
           ..where((tbl) => tbl.collectionId.equals(collectionId))
@@ -19,88 +21,107 @@ class KeywordsDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
+  /// Inserts a keyword or updates it if a primary key conflict occurs.
   Future<void> insertOrUpdateKeyword(KeywordsTableCompanion keyword) {
     return into(keywordsTable).insertOnConflictUpdate(keyword);
   }
 
-  Future<List<KeywordData>> getKeywordsForCar(String carId) async {
-    final query = select(carKeywordsTable).join([
-      innerJoin(
-        keywordsTable,
-        keywordsTable.id.equalsExp(carKeywordsTable.keywordId),
-      ),
-    ])..where(carKeywordsTable.carId.equals(carId));
+  /// Retrieves all keywords linked to a specific item.
+  Future<List<KeywordData>> getKeywordsForItem(String itemId) async {
+    final query =
+        select(itemKeywordsTable).join([
+            innerJoin(
+              keywordsTable,
+              keywordsTable.id.equalsExp(itemKeywordsTable.keywordId),
+            ),
+          ])
+          ..where(itemKeywordsTable.itemId.equals(itemId))
+          ..orderBy([OrderingTerm.asc(keywordsTable.label)]);
 
     final rows = await query.get();
     return rows.map((row) => row.readTable(keywordsTable)).toList();
   }
 
-  Future<Map<String, List<KeywordData>>> getKeywordsForCars(
-    List<String> carIds,
+  /// Batch-loads keywords for multiple items to prevent N+1 queries.
+  Future<Map<String, List<KeywordData>>> getKeywordsForItems(
+    List<String> itemIds,
   ) async {
-    if (carIds.isEmpty) return {};
+    if (itemIds.isEmpty) return {};
 
-    final query = select(carKeywordsTable).join([
-      innerJoin(
-        keywordsTable,
-        keywordsTable.id.equalsExp(carKeywordsTable.keywordId),
-      ),
-    ])..where(carKeywordsTable.carId.isIn(carIds));
+    final query =
+        select(itemKeywordsTable).join([
+            innerJoin(
+              keywordsTable,
+              keywordsTable.id.equalsExp(itemKeywordsTable.keywordId),
+            ),
+          ])
+          ..where(itemKeywordsTable.itemId.isIn(itemIds))
+          ..orderBy([OrderingTerm.asc(keywordsTable.label)]);
 
     final rows = await query.get();
 
     final map = <String, List<KeywordData>>{};
     for (final row in rows) {
-      final carId = row.read(carKeywordsTable.carId);
+      final itemId = row.readTable(itemKeywordsTable).itemId;
       final keyword = row.readTable(keywordsTable);
 
-      if (carId != null) {
-        map.putIfAbsent(carId, () => []).add(keyword);
-      }
+      map.putIfAbsent(itemId, () => []).add(keyword);
     }
     return map;
   }
 
+  /// Finds an existing keyword by label within a collection.
   Future<KeywordData?> getKeywordByLabel(String collectionId, String label) {
     return (select(keywordsTable)..where(
           (tbl) =>
-              tbl.collectionId.equals(collectionId) & tbl.label.equals(label),
+              tbl.collectionId.equals(collectionId) &
+              tbl.label.collate(Collate.noCase).equals(label),
         ))
         .getSingleOrNull();
   }
 
-  Future<void> linkCarWithKeywords({
-    required String carId,
+  /// Atomically updates a item's keyword associations.
+  Future<void> linkItemWithKeywords({
+    required String itemId,
     required String collectionId,
     required List<String> keywordLabels,
-  }) async {
-    await (delete(
-      carKeywordsTable,
-    )..where((tbl) => tbl.carId.equals(carId))).go();
+  }) {
+    return transaction(() async {
+      // Normalize and deduplicate inputs.
+      final cleanedLabels = keywordLabels
+          .map((label) => label.trim())
+          .where((label) => label.isNotEmpty)
+          .toSet();
 
-    for (final rawLabel in keywordLabels) {
-      final label = rawLabel.trim();
-      if (label.isEmpty) continue;
+      // Remove existing associations.
+      await (delete(
+        itemKeywordsTable,
+      )..where((tbl) => tbl.itemId.equals(itemId))).go();
 
-      var keyword = await getKeywordByLabel(collectionId, label);
-      var keywordId = keyword?.id;
+      if (cleanedLabels.isEmpty) return;
 
-      if (keywordId == null) {
-        keywordId = UuidGenerator.generate();
-        await insertOrUpdateKeyword(
-          KeywordsTableCompanion.insert(
-            id: keywordId,
-            collectionId: collectionId,
-            label: label,
-            createdAt: DateTime.now(),
-          ),
+      // Ensure keywords exist and create join entries.
+      for (final label in cleanedLabels) {
+        var keyword = await getKeywordByLabel(collectionId, label);
+        var keywordId = keyword?.id;
+
+        if (keywordId == null) {
+          keywordId = const Uuid().v4();
+          await insertOrUpdateKeyword(
+            KeywordsTableCompanion.insert(
+              id: keywordId,
+              collectionId: collectionId,
+              label: label,
+              createdAt: DateTime.now(),
+            ),
+          );
+        }
+
+        await into(itemKeywordsTable).insert(
+          ItemKeywordsTableCompanion.insert(itemId: itemId, keywordId: keywordId),
+          mode: InsertMode.insertOrIgnore,
         );
       }
-
-      await into(carKeywordsTable).insert(
-        CarKeywordsTableCompanion.insert(carId: carId, keywordId: keywordId),
-        mode: InsertMode.insertOrIgnore,
-      );
-    }
+    });
   }
 }

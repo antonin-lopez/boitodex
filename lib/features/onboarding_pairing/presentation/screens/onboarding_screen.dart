@@ -12,18 +12,24 @@ import 'package:boitodex/features/onboarding_pairing/presentation/screens/join_c
 class OnboardingScreen extends ConsumerWidget {
   const OnboardingScreen({super.key});
 
+  static const double _iconSize = 64;
+
   Future<void> _createCollection(BuildContext context, WidgetRef ref) async {
     await ref
         .read(onboardingPairingControllerProvider.notifier)
         .createCollection();
     if (!context.mounted) return;
 
-    handleAsyncActionResult(
-      context,
-      ref.read(onboardingPairingControllerProvider),
-      onSuccess: (collection) =>
-          _showPairingCodeDialog(context, ref, collection!.pairingCode),
-    );
+    ref
+        .read(onboardingPairingControllerProvider)
+        .handleResult(
+          context,
+          onSuccess: (collection) {
+            if (collection != null) {
+              _showPairingCodeDialog(context, ref, collection.pairingCode);
+            }
+          },
+        );
   }
 
   void _showPairingCodeDialog(
@@ -67,8 +73,8 @@ class OnboardingScreen extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.directions_car_filled,
-                size: 64,
+                Icons.inventory_2,
+                size: _iconSize,
                 color: colorScheme.primary,
               ),
               const SizedBox(height: AppSpacing.md),

@@ -7,12 +7,12 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import 'converters/float32_list_converter.dart';
-import 'daos/cars_dao.dart';
+import 'daos/items_dao.dart';
 import 'daos/collections_dao.dart';
 import 'daos/keywords_dao.dart';
-import 'tables/car_images_table.dart';
-import 'tables/car_keywords_table.dart';
-import 'tables/cars_table.dart';
+import 'tables/item_images_table.dart';
+import 'tables/item_keywords_table.dart';
+import 'tables/items_table.dart';
 import 'tables/collections_table.dart';
 import 'tables/keywords_table.dart';
 import 'tables/sync_cursors_table.dart';
@@ -24,14 +24,14 @@ part 'app_database.g.dart';
 @DriftDatabase(
   tables: [
     CollectionsTable,
-    CarsTable,
-    CarImagesTable,
+    ItemsTable,
+    ItemImagesTable,
     KeywordsTable,
-    CarKeywordsTable,
+    ItemKeywordsTable,
     SyncCursorsTable,
   ],
-  include: {'tables/cars_fts.drift'},
-  daos: [CollectionsDao, CarsDao, KeywordsDao],
+  include: {'tables/items_fts.drift'},
+  daos: [CollectionsDao, ItemsDao, KeywordsDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());

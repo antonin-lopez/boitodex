@@ -31,11 +31,9 @@ class _JoinCollectionScreenState extends ConsumerState<JoinCollectionScreen> {
         .joinCollection(code);
     if (!mounted) return;
 
-    handleAsyncActionResult(
-      context,
-      ref.read(onboardingPairingControllerProvider),
-      onSuccess: (_) => Navigator.of(context).pop(),
-    );
+    ref
+        .read(onboardingPairingControllerProvider)
+        .handleResult(context, onSuccess: (_) => Navigator.of(context).pop());
   }
 
   @override

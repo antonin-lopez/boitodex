@@ -1,6 +1,6 @@
 import 'dart:math';
 
-abstract class PairingCodeGenerator {
+abstract final class PairingCodeGenerator {
   static const _allowedChars = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
   static const codeLength = 8;
 

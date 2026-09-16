@@ -1,12 +1,12 @@
-import 'package:boitodex/features/car/domain/models/car.dart';
+import 'package:boitodex/features/item/domain/models/item.dart';
 
 class SearchResult {
-  final Car car;
+  final Item item;
   final double score;
   final bool isSemanticMatch;
 
   const SearchResult({
-    required this.car,
+    required this.item,
     required this.score,
     required this.isSemanticMatch,
   });

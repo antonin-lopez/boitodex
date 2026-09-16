@@ -1,7 +1,7 @@
 import 'package:boitodex/features/catalog_search/domain/models/search_result.dart';
 
 abstract class CatalogSearchRepository {
-  Future<List<SearchResult>> searchCars({
+  Future<List<SearchResult>> searchItems({
     required String query,
     required String collectionId,
   });

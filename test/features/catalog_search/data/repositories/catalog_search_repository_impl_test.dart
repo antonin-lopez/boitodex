@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:boitodex/core/database/app_database.dart';
 import 'package:boitodex/core/ml/embedding_engine.dart';
-import 'package:boitodex/features/car/data/repositories/car_repository_impl.dart';
+import 'package:boitodex/features/item/data/repositories/item_repository_impl.dart';
 import 'package:boitodex/features/catalog_search/data/repositories/catalog_search_repository_impl.dart';
 
 class FakeEmbeddingEngine implements EmbeddingEngine {
@@ -32,7 +32,7 @@ class FakeEmbeddingEngine implements EmbeddingEngine {
 void main() {
   group('SearchRepositoryImpl', () {
     late AppDatabase db;
-    late CarRepositoryImpl carRepository;
+    late ItemRepositoryImpl itemRepository;
     late CatalogSearchRepositoryImpl searchRepository;
 
     const testCollectionId = '9a8b7c6d-5432-1098-fe01-234567890abc';
@@ -47,11 +47,11 @@ void main() {
       );
 
       final fakeEngine = FakeEmbeddingEngine();
-      carRepository = CarRepositoryImpl(db.carsDao, db.keywordsDao, fakeEngine);
+      itemRepository = ItemRepositoryImpl(db.itemsDao, db.keywordsDao, fakeEngine);
 
       searchRepository = CatalogSearchRepositoryImpl(
-        db.carsDao,
-        carRepository,
+        db.itemsDao,
+        itemRepository,
         fakeEngine,
       );
 
@@ -68,9 +68,9 @@ void main() {
       await db.close();
     });
 
-    group('searchCars', () {
+    group('searchItems', () {
       test('should return empty list when query is empty or blank', () async {
-        final results = await searchRepository.searchCars(
+        final results = await searchRepository.searchItems(
           query: '   ',
           collectionId: testCollectionId,
         );
@@ -79,14 +79,14 @@ void main() {
       });
 
       test('should return exact match via FTS5 with score 1.0', () async {
-        await carRepository.saveCar(
+        await itemRepository.saveItem(
           collectionId: testCollectionId,
           notes: 'Pinder ambulance vintage',
           keywordLabels: ['Ambulance', 'Rouge'],
           imagePaths: [],
         );
 
-        final results = await searchRepository.searchCars(
+        final results = await searchRepository.searchItems(
           query: 'Ambulance',
           collectionId: testCollectionId,
         );
@@ -99,14 +99,14 @@ void main() {
       test(
         'should fallback to semantic match when FTS miss but similarity > 0.5',
         () async {
-          await carRepository.saveCar(
+          await itemRepository.saveItem(
             collectionId: testCollectionId,
             notes: 'Grand pickup rouge',
             keywordLabels: ['Pickup'],
             imagePaths: [],
           );
 
-          final results = await searchRepository.searchCars(
+          final results = await searchRepository.searchItems(
             query: 'camion',
             collectionId: testCollectionId,
           );
@@ -120,14 +120,14 @@ void main() {
       test(
         'should score FTS match as 1.0 even when notes contain diacritics absent from the query',
         () async {
-          await carRepository.saveCar(
+          await itemRepository.saveItem(
             collectionId: testCollectionId,
             notes: 'Break café vintage',
             keywordLabels: ['Break'],
             imagePaths: [],
           );
 
-          final results = await searchRepository.searchCars(
+          final results = await searchRepository.searchItems(
             query:
                 'cafe', // sans accent, comme un utilisateur pressé le taperait
             collectionId: testCollectionId,
@@ -142,7 +142,7 @@ void main() {
       test(
         'should return empty list when query contains only symbols',
         () async {
-          final results = await searchRepository.searchCars(
+          final results = await searchRepository.searchItems(
             query: '???',
             collectionId: testCollectionId,
           );

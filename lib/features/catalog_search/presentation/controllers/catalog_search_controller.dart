@@ -15,7 +15,7 @@ class CatalogSearchController extends _$CatalogSearchController {
     state = await AsyncValue.guard(
       () => ref
           .read(catalogSearchRepositoryProvider)
-          .searchCars(query: query, collectionId: collectionId),
+          .searchItems(query: query, collectionId: collectionId),
     );
   }
 }

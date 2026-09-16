@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:boitodex/core/theme/app_sizes.dart';
-
+/// A primary button that displays a spinner while performing an async action.
 class PrimaryLoadingButton extends StatelessWidget {
   const PrimaryLoadingButton({
     required this.label,
@@ -10,9 +9,12 @@ class PrimaryLoadingButton extends StatelessWidget {
     super.key,
   });
 
+  static const double _spinnerSize = 20;
+  static const double _spinnerStrokeWidth = 2;
+
   final String label;
   final bool isLoading;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -20,10 +22,11 @@ class PrimaryLoadingButton extends StatelessWidget {
       onPressed: isLoading ? null : onPressed,
       child: isLoading
           ? const SizedBox(
-              width: AppSizes.spinner,
-              height: AppSizes.spinner,
+              width: _spinnerSize,
+              height: _spinnerSize,
               child: CircularProgressIndicator(
-                strokeWidth: AppSizes.spinnerStrokeWidth,
+                strokeWidth: _spinnerStrokeWidth,
+                strokeCap: StrokeCap.round,
               ),
             )
           : Text(label),

@@ -1,0 +1,11 @@
+CREATE VIRTUAL TABLE items_fts USING fts5(
+    item_id UNINDEXED,
+    notes,
+    keywords,
+    tokenize = 'unicode61 remove_diacritics 2'
+);
+
+searchItemsByText: SELECT fts.item_id FROM items_fts fts
+  INNER JOIN items c ON c.id = fts.item_id
+  WHERE items_fts MATCH :query AND c.deleted_at IS NULL AND c.collection_id = :collectionId
+  ORDER BY rank;

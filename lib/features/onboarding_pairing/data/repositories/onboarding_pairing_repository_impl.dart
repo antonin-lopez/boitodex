@@ -1,10 +1,12 @@
+import 'package:uuid/uuid.dart';
+
 import 'package:boitodex/core/database/app_database.dart';
 import 'package:boitodex/core/database/daos/collections_dao.dart';
 import 'package:boitodex/core/utils/pairing_code_generator.dart';
-import 'package:boitodex/core/utils/uuid_generator.dart';
 import 'package:boitodex/features/onboarding_pairing/domain/models/collection.dart';
 import 'package:boitodex/features/onboarding_pairing/domain/repositories/onboarding_pairing_repository.dart';
 
+/// Implementation of [OnboardingPairingRepository] managing collection setup and pairing.
 class OnboardingPairingRepositoryImpl implements OnboardingPairingRepository {
   final CollectionsDao _collectionsDao;
 
@@ -12,7 +14,7 @@ class OnboardingPairingRepositoryImpl implements OnboardingPairingRepository {
 
   @override
   Future<Collection> createCollection() async {
-    final id = UuidGenerator.generate();
+    final id = const Uuid().v4();
     final code = PairingCodeGenerator.generate();
     final now = DateTime.now();
 
@@ -30,29 +32,25 @@ class OnboardingPairingRepositoryImpl implements OnboardingPairingRepository {
   @override
   Future<Collection?> getCollectionByPairingCode(String pairingCode) async {
     final data = await _collectionsDao.getCollectionByPairingCode(pairingCode);
-    if (data == null) return null;
-
-    return Collection(
-      id: data.id,
-      pairingCode: data.pairingCode,
-      createdAt: data.createdAt,
-    );
+    return data != null ? _toDomain(data) : null;
   }
 
   @override
   Future<Collection?> getActiveCollection() async {
     final data = await _collectionsDao.getActiveCollection();
-    if (data == null) return null;
-
-    return Collection(
-      id: data.id,
-      pairingCode: data.pairingCode,
-      createdAt: data.createdAt,
-    );
+    return data != null ? _toDomain(data) : null;
   }
 
   @override
   Future<void> deleteCollection(String collectionId) async {
     await _collectionsDao.deleteCollection(collectionId);
+  }
+
+  Collection _toDomain(CollectionData data) {
+    return Collection(
+      id: data.id,
+      pairingCode: data.pairingCode,
+      createdAt: data.createdAt,
+    );
   }
 }

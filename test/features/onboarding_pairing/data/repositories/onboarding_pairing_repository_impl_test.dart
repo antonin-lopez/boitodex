@@ -94,7 +94,7 @@ void main() {
       });
 
       test(
-        'should cascade delete cars and keywords when collection is deleted',
+        'should cascade delete items and keywords when collection is deleted',
         () async {
           final created = await repository.createCollection();
 
